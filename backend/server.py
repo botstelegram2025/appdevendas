@@ -1,75 +1,697 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import logging
-from pathlib import Path
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List
-import uuid
-from datetime import datetime
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
+from pymongo import MongoClient
+from bson import ObjectId
+import os
+import jwt
+import bcrypt
+from dotenv import load_dotenv
+import httpx
+import hashlib
+import hmac
 
+load_dotenv()
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
-
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
-
-# Create the main app without a prefix
 app = FastAPI()
-
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
-
-
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
-
-# Include the router in the main app
-app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# MongoDB connection
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+client = MongoClient(MONGO_URL)
+db = client["digital_sales_app"]
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+# Collections
+users_collection = db["users"]
+admins_collection = db["admins"]
+categories_collection = db["categories"]
+products_collection = db["products"]
+orders_collection = db["orders"]
+payments_collection = db["payments"]
+
+# Mercado Pago credentials
+MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
+JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this")
+
+# Pydantic Models
+class UserRegister(BaseModel):
+    name: str
+    phone: str
+    cpf: str
+    email: Optional[str] = None
+    password: str
+
+class UserLogin(BaseModel):
+    identifier: str  # CPF or phone
+    password: str
+
+class AdminLogin(BaseModel):
+    cpf: str
+    password: str
+
+class Category(BaseModel):
+    name: str
+    icon: str = "📦"
+    order: int = 0
+    active: bool = True
+
+class ProductCreate(BaseModel):
+    name: str
+    description: str
+    price: float
+    category_id: str
+    type: str  # "activation" or "credits"
+    required_fields: List[str] = []
+    discount_rules: List[Dict[str, Any]] = []  # [{"min_quantity": 20, "discount_percent": 5}]
+    active: bool = True
+
+class OrderItem(BaseModel):
+    product_id: str
+    quantity: int = 1
+    unit_price: float
+    fields_data: Dict[str, str] = {}  # {"MAC": "ABC123", "OTP": "xyz"}
+    subtotal: float
+
+class OrderCreate(BaseModel):
+    items: List[OrderItem]
+    total: float
+    discount: float = 0
+    final_total: float
+
+class PaymentCreate(BaseModel):
+    order_id: str
+    payer_email: str
+
+# Helper functions
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def create_token(user_id: str, role: str = "user") -> str:
+    payload = {
+        "user_id": user_id,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(days=7)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+def verify_token(token: str) -> Dict:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+def get_current_user(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    token = authorization.replace("Bearer ", "")
+    return verify_token(token)
+
+def get_admin_user(authorization: str = Header(None)):
+    user = get_current_user(authorization)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+# Routes
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "Digital Sales API"}
+
+# Auth Routes
+@app.post("/api/auth/register")
+async def register(user: UserRegister):
+    # Check if user exists
+    if users_collection.find_one({"$or": [{"cpf": user.cpf}, {"phone": user.phone}]}):
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    user_doc = {
+        "name": user.name,
+        "phone": user.phone,
+        "cpf": user.cpf,
+        "email": user.email,
+        "password_hash": hash_password(user.password),
+        "created_at": datetime.utcnow()
+    }
+    result = users_collection.insert_one(user_doc)
+    token = create_token(str(result.inserted_id), "user")
+    
+    return {
+        "token": token,
+        "user": {
+            "id": str(result.inserted_id),
+            "name": user.name,
+            "phone": user.phone,
+            "email": user.email
+        }
+    }
+
+@app.post("/api/auth/login")
+async def login(credentials: UserLogin):
+    user = users_collection.find_one({
+        "$or": [{"cpf": credentials.identifier}, {"phone": credentials.identifier}]
+    })
+    
+    if not user or not verify_password(credentials.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_token(str(user["_id"]), "user")
+    
+    return {
+        "token": token,
+        "user": {
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "phone": user["phone"],
+            "email": user.get("email")
+        }
+    }
+
+@app.get("/api/auth/me")
+async def get_me(current_user: Dict = Depends(get_current_user)):
+    user = users_collection.find_one({"_id": ObjectId(current_user["user_id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": str(user["_id"]),
+        "name": user["name"],
+        "phone": user["phone"],
+        "email": user.get("email")
+    }
+
+# Admin Auth
+@app.post("/api/admin/login")
+async def admin_login(credentials: AdminLogin):
+    admin = admins_collection.find_one({"cpf": credentials.cpf})
+    
+    if not admin or not verify_password(credentials.password, admin["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    
+    token = create_token(str(admin["_id"]), "admin")
+    
+    return {
+        "token": token,
+        "admin": {
+            "id": str(admin["_id"]),
+            "name": admin["name"],
+            "cpf": admin["cpf"]
+        }
+    }
+
+@app.post("/api/admin/create")
+async def create_admin(name: str, cpf: str, password: str):
+    # Check if admin exists
+    if admins_collection.find_one({"cpf": cpf}):
+        raise HTTPException(status_code=400, detail="Admin already exists")
+    
+    admin_doc = {
+        "name": name,
+        "cpf": cpf,
+        "password_hash": hash_password(password),
+        "role": "admin",
+        "created_at": datetime.utcnow()
+    }
+    result = admins_collection.insert_one(admin_doc)
+    
+    return {"id": str(result.inserted_id), "message": "Admin created successfully"}
+
+# Categories Routes
+@app.get("/api/categories")
+async def get_categories():
+    categories = list(categories_collection.find({"active": True}).sort("order", 1))
+    for cat in categories:
+        cat["id"] = str(cat["_id"])
+        del cat["_id"]
+    return categories
+
+@app.post("/api/categories")
+async def create_category(category: Category, current_user: Dict = Depends(get_admin_user)):
+    cat_doc = category.dict()
+    cat_doc["created_at"] = datetime.utcnow()
+    result = categories_collection.insert_one(cat_doc)
+    cat_doc["id"] = str(result.inserted_id)
+    del cat_doc["_id"]
+    return cat_doc
+
+@app.put("/api/categories/{category_id}")
+async def update_category(category_id: str, category: Category, current_user: Dict = Depends(get_admin_user)):
+    result = categories_collection.update_one(
+        {"_id": ObjectId(category_id)},
+        {"$set": category.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return {"message": "Category updated"}
+
+@app.delete("/api/categories/{category_id}")
+async def delete_category(category_id: str, current_user: Dict = Depends(get_admin_user)):
+    # Check if category has products
+    if products_collection.find_one({"category_id": category_id}):
+        raise HTTPException(status_code=400, detail="Category has products")
+    
+    result = categories_collection.delete_one({"_id": ObjectId(category_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return {"message": "Category deleted"}
+
+# Products Routes
+@app.get("/api/products")
+async def get_products(category_id: Optional[str] = None):
+    query = {"active": True}
+    if category_id:
+        query["category_id"] = category_id
+    
+    products = list(products_collection.find(query))
+    for prod in products:
+        prod["id"] = str(prod["_id"])
+        del prod["_id"]
+    return products
+
+@app.get("/api/products/{product_id}")
+async def get_product(product_id: str):
+    product = products_collection.find_one({"_id": ObjectId(product_id)})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    product["id"] = str(product["_id"])
+    del product["_id"]
+    return product
+
+@app.post("/api/products")
+async def create_product(product: ProductCreate, current_user: Dict = Depends(get_admin_user)):
+    prod_doc = product.dict()
+    prod_doc["created_at"] = datetime.utcnow()
+    result = products_collection.insert_one(prod_doc)
+    prod_doc["id"] = str(result.inserted_id)
+    del prod_doc["_id"]
+    return prod_doc
+
+@app.put("/api/products/{product_id}")
+async def update_product(product_id: str, product: ProductCreate, current_user: Dict = Depends(get_admin_user)):
+    result = products_collection.update_one(
+        {"_id": ObjectId(product_id)},
+        {"$set": product.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product updated"}
+
+@app.delete("/api/products/{product_id}")
+async def delete_product(product_id: str, current_user: Dict = Depends(get_admin_user)):
+    result = products_collection.delete_one({"_id": ObjectId(product_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"message": "Product deleted"}
+
+# Orders Routes
+@app.post("/api/orders")
+async def create_order(order: OrderCreate, current_user: Dict = Depends(get_current_user)):
+    order_doc = order.dict()
+    order_doc["user_id"] = current_user["user_id"]
+    order_doc["payment_status"] = "pending"
+    order_doc["delivery_status"] = "awaiting_payment"
+    order_doc["created_at"] = datetime.utcnow()
+    order_doc["updated_at"] = datetime.utcnow()
+    
+    result = orders_collection.insert_one(order_doc)
+    order_doc["id"] = str(result.inserted_id)
+    del order_doc["_id"]
+    
+    return order_doc
+
+@app.get("/api/orders")
+async def get_orders(current_user: Dict = Depends(get_current_user)):
+    orders = list(orders_collection.find({"user_id": current_user["user_id"]}).sort("created_at", -1))
+    for order in orders:
+        order["id"] = str(order["_id"])
+        del order["_id"]
+    return orders
+
+@app.get("/api/orders/{order_id}")
+async def get_order(order_id: str, current_user: Dict = Depends(get_current_user)):
+    order = orders_collection.find_one({"_id": ObjectId(order_id), "user_id": current_user["user_id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order["id"] = str(order["_id"])
+    del order["_id"]
+    return order
+
+# Admin Orders
+@app.get("/api/admin/orders")
+async def get_admin_orders(
+    status: Optional[str] = None,
+    current_user: Dict = Depends(get_admin_user)
+):
+    query = {}
+    if status:
+        query["payment_status"] = status
+    
+    orders = list(orders_collection.find(query).sort("created_at", -1))
+    for order in orders:
+        order["id"] = str(order["_id"])
+        # Get user info
+        user = users_collection.find_one({"_id": ObjectId(order["user_id"])})
+        if user:
+            order["user_name"] = user["name"]
+            order["user_phone"] = user["phone"]
+        del order["_id"]
+    return orders
+
+@app.get("/api/admin/orders/{order_id}")
+async def get_admin_order(order_id: str, current_user: Dict = Depends(get_admin_user)):
+    order = orders_collection.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    order["id"] = str(order["_id"])
+    # Get user info
+    user = users_collection.find_one({"_id": ObjectId(order["user_id"])})
+    if user:
+        order["user_name"] = user["name"]
+        order["user_phone"] = user["phone"]
+        order["user_email"] = user.get("email")
+    del order["_id"]
+    return order
+
+@app.put("/api/admin/orders/{order_id}/deliver")
+async def deliver_order(order_id: str, current_user: Dict = Depends(get_admin_user)):
+    result = orders_collection.update_one(
+        {"_id": ObjectId(order_id)},
+        {"$set": {"delivery_status": "delivered", "delivered_at": datetime.utcnow(), "updated_at": datetime.utcnow()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order marked as delivered"}
+
+# Payments Routes
+@app.post("/api/payments/create-pix")
+async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = Depends(get_current_user)):
+    # Get order
+    order = orders_collection.find_one({"_id": ObjectId(payment_data.order_id), "user_id": current_user["user_id"]})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    if order["payment_status"] != "pending":
+        raise HTTPException(status_code=400, detail="Order already paid or cancelled")
+    
+    # Get user for CPF
+    user = users_collection.find_one({"_id": ObjectId(current_user["user_id"])})
+    
+    # Create payment in Mercado Pago
+    mp_data = {
+        "transaction_amount": order["final_total"],
+        "description": f"Pedido #{payment_data.order_id[:8]}",
+        "payment_method_id": "pix",
+        "payer": {
+            "email": payment_data.payer_email or user.get("email", "cliente@example.com"),
+            "identification": {
+                "type": "CPF",
+                "number": user["cpf"]
+            }
+        }
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.mercadopago.com/v1/payments",
+            json=mp_data,
+            headers={
+                "Authorization": f"Bearer {MERCADOPAGO_ACCESS_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            timeout=30.0
+        )
+    
+    if response.status_code not in [200, 201]:
+        raise HTTPException(status_code=400, detail=f"Mercado Pago error: {response.text}")
+    
+    mp_response = response.json()
+    
+    # Save payment
+    payment_doc = {
+        "order_id": payment_data.order_id,
+        "mercadopago_id": str(mp_response["id"]),
+        "payment_method": "pix",
+        "status": mp_response["status"],
+        "qr_code": mp_response["point_of_interaction"]["transaction_data"]["qr_code"],
+        "qr_code_base64": mp_response["point_of_interaction"]["transaction_data"]["qr_code_base64"],
+        "created_at": datetime.utcnow()
+    }
+    payments_collection.insert_one(payment_doc)
+    
+    return {
+        "payment_id": str(mp_response["id"]),
+        "status": mp_response["status"],
+        "qr_code": payment_doc["qr_code"],
+        "qr_code_base64": payment_doc["qr_code_base64"]
+    }
+
+@app.get("/api/payments/{payment_id}/status")
+async def check_payment_status(payment_id: str, current_user: Dict = Depends(get_current_user)):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.mercadopago.com/v1/payments/{payment_id}",
+            headers={"Authorization": f"Bearer {MERCADOPAGO_ACCESS_TOKEN}"},
+            timeout=30.0
+        )
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail="Payment not found")
+    
+    mp_response = response.json()
+    status = mp_response["status"]
+    
+    # Update payment and order status
+    payment = payments_collection.find_one({"mercadopago_id": payment_id})
+    if payment:
+        payments_collection.update_one(
+            {"mercadopago_id": payment_id},
+            {"$set": {"status": status}}
+        )
+        
+        if status == "approved":
+            orders_collection.update_one(
+                {"_id": ObjectId(payment["order_id"])},
+                {"$set": {"payment_status": "paid", "delivery_status": "processing", "updated_at": datetime.utcnow()}}
+            )
+    
+    return {"status": status}
+
+@app.post("/api/payments/webhook")
+async def payment_webhook(request: Request):
+    body = await request.body()
+    data = await request.json()
+    
+    # Process webhook
+    if data.get("type") == "payment":
+        payment_id = data["data"]["id"]
+        
+        # Get payment status from MP
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.mercadopago.com/v1/payments/{payment_id}",
+                headers={"Authorization": f"Bearer {MERCADOPAGO_ACCESS_TOKEN}"},
+                timeout=30.0
+            )
+        
+        if response.status_code == 200:
+            mp_response = response.json()
+            status = mp_response["status"]
+            
+            # Update payment and order
+            payment = payments_collection.find_one({"mercadopago_id": str(payment_id)})
+            if payment:
+                payments_collection.update_one(
+                    {"mercadopago_id": str(payment_id)},
+                    {"$set": {"status": status}}
+                )
+                
+                if status == "approved":
+                    orders_collection.update_one(
+                        {"_id": ObjectId(payment["order_id"])},
+                        {"$set": {"payment_status": "paid", "delivery_status": "processing", "updated_at": datetime.utcnow()}}
+                    )
+    
+    return {"status": "ok"}
+
+# Dashboard Routes
+@app.get("/api/admin/dashboard/stats")
+async def get_dashboard_stats(current_user: Dict = Depends(get_admin_user)):
+    now = datetime.utcnow()
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Previous month
+    if now.month == 1:
+        prev_month_start = current_month_start.replace(year=now.year - 1, month=12)
+    else:
+        prev_month_start = current_month_start.replace(month=now.month - 1)
+    
+    # Current month stats
+    current_month_orders = list(orders_collection.find({
+        "payment_status": "paid",
+        "created_at": {"$gte": current_month_start}
+    }))
+    
+    current_revenue = sum(order["final_total"] for order in current_month_orders)
+    current_count = len(current_month_orders)
+    
+    # Previous month stats
+    prev_month_orders = list(orders_collection.find({
+        "payment_status": "paid",
+        "created_at": {"$gte": prev_month_start, "$lt": current_month_start}
+    }))
+    
+    prev_revenue = sum(order["final_total"] for order in prev_month_orders)
+    
+    # Calculate percentage change
+    revenue_change = 0
+    if prev_revenue > 0:
+        revenue_change = ((current_revenue - prev_revenue) / prev_revenue) * 100
+    
+    # Status counts
+    pending_count = orders_collection.count_documents({"payment_status": "pending"})
+    paid_count = orders_collection.count_documents({"payment_status": "paid", "delivery_status": "processing"})
+    delivered_count = orders_collection.count_documents({"delivery_status": "delivered", "created_at": {"$gte": current_month_start}})
+    
+    # Average ticket
+    avg_ticket = current_revenue / current_count if current_count > 0 else 0
+    
+    return {
+        "current_month": {
+            "revenue": round(current_revenue, 2),
+            "orders_count": current_count,
+            "avg_ticket": round(avg_ticket, 2)
+        },
+        "revenue_change_percent": round(revenue_change, 2),
+        "status_counts": {
+            "pending": pending_count,
+            "paid": paid_count,
+            "delivered": delivered_count
+        }
+    }
+
+@app.get("/api/admin/dashboard/monthly-revenue")
+async def get_monthly_revenue(months: int = 6, current_user: Dict = Depends(get_admin_user)):
+    now = datetime.utcnow()
+    result = []
+    
+    for i in range(months):
+        if now.month - i <= 0:
+            month = 12 + (now.month - i)
+            year = now.year - 1
+        else:
+            month = now.month - i
+            year = now.year
+        
+        month_start = datetime(year, month, 1)
+        if month == 12:
+            month_end = datetime(year + 1, 1, 1)
+        else:
+            month_end = datetime(year, month + 1, 1)
+        
+        orders = list(orders_collection.find({
+            "payment_status": "paid",
+            "created_at": {"$gte": month_start, "$lt": month_end}
+        }))
+        
+        revenue = sum(order["final_total"] for order in orders)
+        
+        result.insert(0, {
+            "month": f"{year}-{month:02d}",
+            "revenue": round(revenue, 2),
+            "orders_count": len(orders)
+        })
+    
+    return result
+
+@app.get("/api/admin/dashboard/top-products")
+async def get_top_products(limit: int = 10, current_user: Dict = Depends(get_admin_user)):
+    now = datetime.utcnow()
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Get all paid orders from current month
+    orders = list(orders_collection.find({
+        "payment_status": "paid",
+        "created_at": {"$gte": current_month_start}
+    }))
+    
+    # Count products
+    product_stats = {}
+    for order in orders:
+        for item in order["items"]:
+            pid = item["product_id"]
+            if pid not in product_stats:
+                product_stats[pid] = {"quantity": 0, "revenue": 0}
+            product_stats[pid]["quantity"] += item["quantity"]
+            product_stats[pid]["revenue"] += item["subtotal"]
+    
+    # Get product details and sort
+    result = []
+    for pid, stats in product_stats.items():
+        product = products_collection.find_one({"_id": ObjectId(pid)})
+        if product:
+            result.append({
+                "product_id": pid,
+                "product_name": product["name"],
+                "quantity_sold": stats["quantity"],
+                "revenue": round(stats["revenue"], 2)
+            })
+    
+    result.sort(key=lambda x: x["revenue"], reverse=True)
+    return result[:limit]
+
+@app.get("/api/admin/dashboard/sales-by-category")
+async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
+    now = datetime.utcnow()
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Get all paid orders from current month
+    orders = list(orders_collection.find({
+        "payment_status": "paid",
+        "created_at": {"$gte": current_month_start}
+    }))
+    
+    # Count by category
+    category_stats = {}
+    for order in orders:
+        for item in order["items"]:
+            product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+            if product:
+                cat_id = product["category_id"]
+                if cat_id not in category_stats:
+                    category_stats[cat_id] = {"revenue": 0, "orders_count": 0}
+                category_stats[cat_id]["revenue"] += item["subtotal"]
+                category_stats[cat_id]["orders_count"] += 1
+    
+    # Get category details
+    result = []
+    for cat_id, stats in category_stats.items():
+        category = categories_collection.find_one({"_id": ObjectId(cat_id)})
+        if category:
+            result.append({
+                "category_id": cat_id,
+                "category_name": category["name"],
+                "revenue": round(stats["revenue"], 2),
+                "orders_count": stats["orders_count"]
+            })
+    
+    result.sort(key=lambda x: x["revenue"], reverse=True)
+    return result
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
