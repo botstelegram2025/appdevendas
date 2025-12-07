@@ -28,10 +28,12 @@ export default function Register() {
     setLoading(true);
     try {
       await register(name, phone, cpf, email, password);
-      router.replace('/(tabs)');
+      // Use setTimeout to ensure state is updated before navigation
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (error: any) {
       Alert.alert('Erro', error.message);
-    } finally {
       setLoading(false);
     }
   };
