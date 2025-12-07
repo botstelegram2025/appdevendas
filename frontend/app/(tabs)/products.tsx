@@ -120,7 +120,11 @@ export default function Products() {
                 </View>
               ) : (
                 products.map((product) => (
-                  <TouchableOpacity key={product.id} style={styles.productCard}>
+                  <TouchableOpacity 
+                    key={product.id} 
+                    style={styles.productCard}
+                    onPress={() => router.push({ pathname: '/product-detail', params: { productId: product.id } })}
+                  >
                     <View style={styles.productInfo}>
                       <Text style={styles.productName}>{product.name}</Text>
                       <Text style={styles.productDescription} numberOfLines={2}>
