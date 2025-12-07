@@ -11,7 +11,7 @@ export default function Index() {
     if (!loading) {
       if (token) {
         if (isAdmin) {
-          router.replace('/admin');
+          router.replace('/admin-dashboard');
         } else {
           router.replace('/(tabs)');
         }
