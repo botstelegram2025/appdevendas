@@ -20,7 +20,7 @@ export default function AdminLogin() {
     setLoading(true);
     try {
       await adminLogin(cpf, password);
-      router.replace('/admin');
+      router.replace('/admin-dashboard');
     } catch (error: any) {
       Alert.alert('Erro', error.message);
     } finally {
