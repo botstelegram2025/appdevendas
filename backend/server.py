@@ -1040,26 +1040,8 @@ Obrigado pela preferência! 🙏"""
 @app.get("/api/whatsapp/status")
 async def get_whatsapp_status():
     try:
-        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}"
-        headers = {"X-Api-Key": WAHA_API_KEY}
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, timeout=5.0)
-            data = response.json()
-            
-            # Adaptar resposta WAHA para o formato esperado
-            return {
-                "connected": data.get("status") == "WORKING",
-                "hasQR": data.get("status") == "SCAN_QR_CODE",
-                "status": data.get("status", "STOPPED")
-            }
-    except Exception as e:
-        return {"connected": False, "error": str(e), "status": "ERROR"}
-
-@app.get("/api/whatsapp/qr")
-async def get_whatsapp_qr():
-    try:
-        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/me/qr"
+        # WAHA usa /api/{session}/status ou /api/server/status
+        url = f"{WAHA_API_URL}/api/{WAHA_SESSION}/status"
         headers = {"X-Api-Key": WAHA_API_KEY}
         
         async with httpx.AsyncClient() as client:
@@ -1067,10 +1049,40 @@ async def get_whatsapp_qr():
             
             if response.status_code == 200:
                 data = response.json()
-                # WAHA retorna { "qr": "data:image/png;base64..." }
-                return {"qr": data.get("qr"), "message": "QR Code disponível"}
+                # WAHA retorna { "state": "WORKING" } ou similar
+                return {
+                    "connected": data.get("state") == "WORKING",
+                    "hasQR": data.get("state") == "SCAN_QR_CODE",
+                    "status": data.get("state", "STOPPED")
+                }
             else:
-                return {"error": "QR Code não disponível", "message": "Aguardando..."}
+                return {"connected": False, "status": "STOPPED", "hasQR": False}
+    except Exception as e:
+        return {"connected": False, "error": str(e), "status": "ERROR"}
+
+@app.get("/api/whatsapp/qr")
+async def get_whatsapp_qr():
+    try:
+        # WAHA usa /api/{session}/screenshot para obter QR Code
+        url = f"{WAHA_API_URL}/api/{WAHA_SESSION}/screenshot"
+        headers = {"X-Api-Key": WAHA_API_KEY}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=5.0)
+            
+            if response.status_code == 200:
+                # WAHA retorna imagem diretamente ou JSON com base64
+                content_type = response.headers.get("content-type", "")
+                
+                if "image" in content_type:
+                    # Converte imagem para base64
+                    import base64
+                    img_base64 = base64.b64encode(response.content).decode('utf-8')
+                    return {"qr": f"data:image/png;base64,{img_base64}", "message": "QR Code disponível"}
+                else:
+                    return response.json()
+            else:
+                return {"error": "QR Code não disponível", "message": "Sessão não iniciada ou já conectada"}
     except Exception as e:
         return {"error": str(e), "message": "Erro ao obter QR Code"}
 
