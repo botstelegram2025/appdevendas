@@ -104,10 +104,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const adminLogin = async (cpf: string, password: string) => {
     try {
+      console.log('AdminLogin - BACKEND_URL:', BACKEND_URL);
+      console.log('AdminLogin - Data:', { cpf, password });
       const response = await axios.post(`${BACKEND_URL}/api/admin/login`, {
         cpf,
         password
       });
+      console.log('AdminLogin - Response:', response.data);
       
       const { token: newToken, admin } = response.data;
       
