@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/frontend/.env')
 
 # Get backend URL from frontend environment
-BACKEND_URL = os.getenv('EXPO_PUBLIC_BACKEND_URL', 'https://digimarket-24.preview.emergentagent.com')
+BACKEND_URL = os.getenv('EXPO_PUBLIC_BACKEND_URL', 'https://whatsapp-shop-12.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class PaymentNotificationTester:
