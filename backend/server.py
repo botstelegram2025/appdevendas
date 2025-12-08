@@ -1128,26 +1128,40 @@ async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_a
         print(f"WhatsApp send error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {str(e)}")
 
+@app.post("/api/whatsapp/start")
+async def whatsapp_start(current_user: Dict = Depends(get_admin_user)):
+    """Iniciar sessão WAHA (admin only)"""
+    try:
+        url = f"{WAHA_API_URL}/api/sessions/start"
+        headers = {"X-Api-Key": WAHA_API_KEY, "Content-Type": "application/json"}
+        payload = {"name": WAHA_SESSION}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=headers, timeout=10.0)
+            
+            if response.status_code in [200, 201]:
+                return {"success": True, "message": "Sessão iniciada. Aguarde o QR Code."}
+            else:
+                return {"success": False, "error": f"Erro: {response.status_code} - {response.text}"}
+    except Exception as e:
+        print(f"WhatsApp start error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao iniciar sessão: {str(e)}")
+
 @app.post("/api/whatsapp/logout")
 async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
     """Desconectar WhatsApp usando WAHA API (admin only)"""
     try:
-        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/stop"
+        url = f"{WAHA_API_URL}/api/{WAHA_SESSION}/logout"
         headers = {"X-Api-Key": WAHA_API_KEY}
         
         async with httpx.AsyncClient() as client:
-            # Stop the session
+            # Logout da sessão
             response = await client.post(url, headers=headers, timeout=10.0)
             
             if response.status_code in [200, 201]:
-                # Start the session again to generate new QR
-                start_url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/start"
-                await client.post(start_url, headers=headers, timeout=10.0)
-                
                 return {
                     "success": True, 
-                    "message": "WhatsApp desconectado. Novo QR Code será gerado.",
-                    "status": "STOPPED"
+                    "message": "WhatsApp desconectado. Recarregue para gerar novo QR Code."
                 }
             else:
                 return {"success": False, "error": f"Erro ao desconectar: {response.status_code} - {response.text}"}
