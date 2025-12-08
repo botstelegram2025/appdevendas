@@ -648,37 +648,8 @@ async def check_payment_status(payment_id: str, current_user: Dict = Depends(get
             user = users_collection.find_one({"_id": ObjectId(order["user_id"])}) if order else None
             
             if order and user:
-                order_id_short = str(order["_id"])[:8]
-                
-                # Notify admin
-                admin_message = f"""✅ *PAGAMENTO APROVADO - MARKIMAGEM TV*
-
-📦 Pedido: #{order_id_short}
-👤 Cliente: {user['name']}
-💰 Valor: R$ {order['final_total']:.2f}
-
-✅ Pagamento confirmado!
-📤 Preparar entrega"""
-                
-                await send_whatsapp_notification(ADMIN_WHATSAPP_NUMBER, admin_message)
-                
-                # Notify customer
-                if user.get('phone'):
-                    customer_message = f"""✅ *Pagamento Aprovado - MARKIMAGEM TV*
-
-Olá {user['name']}! 
-
-Seu pagamento foi confirmado! 💰
-
-📦 Pedido: #{order_id_short}
-💵 Valor: R$ {order['final_total']:.2f}
-
-🚀 Estamos preparando sua entrega.
-Em breve você receberá os dados dos produtos.
-
-Obrigado pela preferência! 🙏"""
-                    
-                    await send_whatsapp_notification(user['phone'], customer_message)
+                # Send notifications using the new helper function
+                await send_payment_approved_notifications(order, user)
     
     return {"status": status}
 
