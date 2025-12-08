@@ -432,10 +432,14 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
                 json=mp_data,
                 headers={
                     "Authorization": f"Bearer {MERCADOPAGO_ACCESS_TOKEN}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "X-Idempotency-Key": str(uuid.uuid4())
                 },
                 timeout=30.0
             )
+        
+        print(f"Mercado Pago Response Status: {response.status_code}")
+        print(f"Mercado Pago Response Body: {response.text}")
         
         if response.status_code in [200, 201]:
             mp_response = response.json()
@@ -458,8 +462,16 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
                 "qr_code": payment_doc["qr_code"],
                 "qr_code_base64": payment_doc["qr_code_base64"]
             }
+        else:
+            # Log detailed error
+            print(f"Mercado Pago API Error: {response.status_code}")
+            print(f"Error details: {response.text}")
+            raise HTTPException(status_code=400, detail=f"Mercado Pago error: {response.text}")
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Mercado Pago error: {str(e)}")
+        print(f"Mercado Pago exception: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Payment processing error: {str(e)}")
     
     # Fallback: Create simulated PIX payment for testing
     import uuid
