@@ -180,7 +180,7 @@ export default function AdminDashboard() {
             <Ionicons name="chevron-forward" size={24} color="#CCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuCard} onPress={() => router.push('/admin/reports')}>
             <View style={[styles.menuIcon, { backgroundColor: '#AF52DE20' }]}>
               <Ionicons name="bar-chart" size={24} color="#AF52DE" />
             </View>
