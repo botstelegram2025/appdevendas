@@ -44,6 +44,12 @@ MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this")
 
+# WAHA WhatsApp API credentials
+WAHA_API_URL = os.getenv("WAHA_API_URL", "https://wahavendas-production.up.railway.app")
+WAHA_API_KEY = os.getenv("WAHA_API_KEY", "waha_vendas2025")
+WAHA_SESSION = os.getenv("WAHA_SESSION", "default")
+ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP", "556195021362")
+
 # Pydantic Models
 class UserRegister(BaseModel):
     name: str
