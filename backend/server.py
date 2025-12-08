@@ -755,6 +755,50 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
     result.sort(key=lambda x: x["revenue"], reverse=True)
     return result
 
+# WhatsApp Service Proxy Routes
+WHATSAPP_SERVICE_URL = "http://localhost:3001"
+
+@app.get("/api/whatsapp/status")
+async def whatsapp_status():
+    """Proxy to WhatsApp service status endpoint"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{WHATSAPP_SERVICE_URL}/status", timeout=5.0)
+            return response.json()
+    except Exception as e:
+        print(f"WhatsApp status error: {str(e)}")
+        return {"connected": False, "hasQR": False, "error": str(e)}
+
+@app.get("/api/whatsapp/qr")
+async def whatsapp_qr():
+    """Proxy to WhatsApp service QR code endpoint"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{WHATSAPP_SERVICE_URL}/qr", timeout=5.0)
+            return response.json()
+    except Exception as e:
+        print(f"WhatsApp QR error: {str(e)}")
+        return {"message": "Erro ao obter QR Code", "error": str(e)}
+
+class WhatsAppMessage(BaseModel):
+    number: str
+    message: str
+
+@app.post("/api/whatsapp/send")
+async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_admin_user)):
+    """Proxy to WhatsApp service send endpoint (admin only)"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{WHATSAPP_SERVICE_URL}/send",
+                json={"number": msg.number, "message": msg.message},
+                timeout=10.0
+            )
+            return response.json()
+    except Exception as e:
+        print(f"WhatsApp send error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
