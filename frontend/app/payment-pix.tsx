@@ -104,7 +104,7 @@ export default function PaymentPix() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel}>
-          <Ionicons name=\"close\" size={24} color=\"#000\" />
+          <Ionicons name="close" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.title}>Pagamento PIX</Text>
         <View style={{ width: 24 }} />
