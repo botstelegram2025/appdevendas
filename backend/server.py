@@ -409,12 +409,58 @@ async def get_admin_order(order_id: str, current_user: Dict = Depends(get_admin_
 
 @app.put("/api/admin/orders/{order_id}/deliver")
 async def deliver_order(order_id: str, current_user: Dict = Depends(get_admin_user)):
+    # Get order before updating
+    order = orders_collection.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Update order status
     result = orders_collection.update_one(
         {"_id": ObjectId(order_id)},
         {"$set": {"delivery_status": "delivered", "delivered_at": datetime.utcnow(), "updated_at": datetime.utcnow()}}
     )
+    
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Get user info for notification
+    user = users_collection.find_one({"_id": ObjectId(order["user_id"])})
+    
+    if user and user.get('phone'):
+        order_id_short = str(order["_id"])[:8]
+        
+        # Build product list message
+        products_list = []
+        for item in order["items"]:
+            product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+            if product:
+                products_list.append(f"• {product['name']} (x{item['quantity']})")
+                
+                # Add custom fields if present
+                if item.get("fields_data"):
+                    for field_name, field_value in item["fields_data"].items():
+                        products_list.append(f"  ↳ {field_name}: {field_value}")
+        
+        products_text = "\n".join(products_list)
+        
+        # Notify customer
+        customer_message = f"""🎉 *Pedido Entregue - MARKIMAGEM TV*
+
+Olá {user['name']}! 
+
+Seu pedido foi entregue! ✅
+
+📦 Pedido: #{order_id_short}
+💵 Valor pago: R$ {order['final_total']:.2f}
+
+📋 *Produtos e Dados:*
+{products_text}
+
+✨ Agradecemos pela preferência!
+Para dúvidas, entre em contato."""
+        
+        await send_whatsapp_notification(user['phone'], customer_message)
+    
     return {"message": "Order marked as delivered"}
 
 # Payments Routes
