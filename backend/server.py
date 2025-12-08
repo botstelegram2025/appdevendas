@@ -1130,7 +1130,7 @@ async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
             if response.status_code in [200, 201]:
                 # Start the session again to generate new QR
                 start_url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/start"
-                start_response = await client.post(start_url, headers=headers, timeout=10.0)
+                await client.post(start_url, headers=headers, timeout=10.0)
                 
                 return {
                     "success": True, 
