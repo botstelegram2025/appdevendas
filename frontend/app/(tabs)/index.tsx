@@ -49,7 +49,9 @@ export default function Home() {
             <Text style={styles.greeting}>Olá,</Text>
             <Text style={styles.userName}>{user?.name}</Text>
           </View>
-          <Ionicons name="notifications-outline" size={24} color="#000" />
+          <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
+            <Ionicons name="person-circle-outline" size={32} color="#007AFF" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
