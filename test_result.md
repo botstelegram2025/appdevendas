@@ -386,3 +386,45 @@ agent_communication:
       - /api/payments/webhook ✅
       
       🚀 READY FOR PRODUCTION: The critical payment notification fix is working perfectly!
+  
+  - agent: "main"
+    message: |
+      🎯 CORREÇÃO CRÍTICA: NORMALIZAÇÃO DE NÚMEROS DE TELEFONE (P0)
+      
+      📋 PROBLEMA:
+      - Notificações WhatsApp falham com erro "No LID for user" para certos números
+      - A API WAHA/WhatsApp não reconhece números com o 9º dígito extra brasileiro
+      
+      ✅ SOLUÇÃO IMPLEMENTADA:
+      1. BACKEND:
+         - Função normalize_phone_number() atualizada em /app/backend/server.py
+         - Remove automaticamente o 9º dígito quando presente
+         - Exemplo: 5561987654321 (13 dígitos) → 556187654321 (12 dígitos)
+         - Formato final: 55 + DDD (2) + 8 dígitos = 12 dígitos total
+      
+      2. FRONTEND:
+         - Tela de registro atualizada em /app/frontend/app/auth/register.tsx
+         - Máscara de input: +55 (XX) XXXXX-XXXX
+         - Remove 9º dígito antes de enviar para backend
+         - Instruções claras para o usuário sobre formato correto
+      
+      3. APLICADO EM:
+         - ✅ Registro de usuário (/api/auth/register)
+         - ✅ Atualização de perfil (/api/auth/profile)
+         - ✅ Envio de notificações (send_whatsapp_notification)
+      
+      🧪 TESTES REALIZADOS:
+      - ✅ Função normalize_phone_number testada com 5 casos diferentes
+      - ✅ Todos os números convertidos para 12 dígitos
+      - ✅ Serviços backend e frontend reiniciados
+      
+      📝 PRÓXIMOS PASSOS (TESTING AGENT):
+      1. Testar endpoint de registro com número +55 (61) 98765-4321
+      2. Verificar no MongoDB que número foi salvo como 556187654321
+      3. Criar pedido de teste e verificar notificações
+      4. Confirmar que erro "No LID for user" não ocorre mais
+      
+      Credenciais:
+      - Admin: CPF 99064820104, Senha 152316
+      - WAHA API URL: https://waha-production-9e0b.up.railway.app
+      - Admin WhatsApp: 556195021362
