@@ -755,8 +755,31 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
     result.sort(key=lambda x: x["revenue"], reverse=True)
     return result
 
-# WhatsApp Service Proxy Routes
+# WhatsApp Service Configuration
 WHATSAPP_SERVICE_URL = "http://localhost:3001"
+ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP_NUMBER", "5561981447719")  # Número do admin para receber notificações
+
+# Helper function to send WhatsApp notifications
+async def send_whatsapp_notification(number: str, message: str):
+    """Helper function to send WhatsApp notification"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{WHATSAPP_SERVICE_URL}/send",
+                json={"number": number, "message": message},
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                print(f"✅ WhatsApp enviado para {number}")
+                return True
+            else:
+                print(f"⚠️ Falha ao enviar WhatsApp para {number}: {response.text}")
+                return False
+    except Exception as e:
+        print(f"❌ Erro ao enviar WhatsApp para {number}: {str(e)}")
+        return False
+
+# WhatsApp Service Proxy Routes
 
 @app.get("/api/whatsapp/status")
 async def whatsapp_status():
