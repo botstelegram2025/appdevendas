@@ -138,6 +138,16 @@ export default function WhatsAppConfig() {
               : '⚠️ Escaneie o QR Code abaixo para conectar'
             }
           </Text>
+          
+          {isConnected && (
+            <TouchableOpacity 
+              style={styles.disconnectButton}
+              onPress={disconnectWhatsApp}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+              <Text style={styles.disconnectButtonText}>Desconectar WhatsApp</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* QR Code Section */}
