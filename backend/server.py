@@ -978,6 +978,20 @@ async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_a
         print(f"WhatsApp send error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {str(e)}")
 
+@app.post("/api/whatsapp/logout")
+async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
+    """Desconectar WhatsApp e gerar novo QR code (admin only)"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{WHATSAPP_SERVICE_URL}/logout",
+                timeout=10.0
+            )
+            return response.json()
+    except Exception as e:
+        print(f"WhatsApp logout error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
