@@ -10,6 +10,10 @@ app.use(express.json());
 let sock = null;
 let isConnected = false;
 let qrCodeData = null;
+let reconnectAttempts = 0;
+let isReconnecting = false;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_DELAY = 10000; // 10 segundos
 
 // Função para limpar sessões antigas
 function clearOldSessions() {
