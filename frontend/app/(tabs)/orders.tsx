@@ -29,6 +29,15 @@ export default function Orders() {
     }
   }, [token]);
 
+  // Recarregar pedidos quando a tela recebe foco
+  useFocusEffect(
+    React.useCallback(() => {
+      if (token) {
+        loadOrders();
+      }
+    }, [token])
+  );
+
   const loadOrders = async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/orders`, {
