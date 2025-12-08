@@ -1,0 +1,210 @@
+<analysis>
+
+**original_problem_statement:**
+The user wants to create a mobile application (Android and iOS) for selling digital products (e.g., app activations, IPTV credits), based on an existing Telegram bot's flow.
+
+**PRODUCT REQUIREMENTS:**
+1.  **Customer Area:**
+    *   User registration/login.
+    *   Product catalog with categories.
+    *   Shopping cart.
+    *   Checkout via Mercado Pago (PIX).
+    *   Order history screen where users can track payment and delivery status.
+    *   Products can have dynamic custom fields (MAC, OTP, email, etc.) for the customer to fill.
+2.  **Admin Area:**
+    *   Separate admin login.
+    *   Dashboard with sales reports (monthly revenue, comparisons, charts).
+    *   CRUD management for products, categories, and orders.
+    *   Admin should be able to view all order details (including custom fields), easily copy them, and confirm order delivery.
+    *   Ability to add a thumbnail image (capa) for each product.
+3.  **Notifications:**
+    *   WhatsApp notifications for both customer and admin for new orders, payment approvals, and deliveries.
+    *   The admin notification for a new order must include all custom fields filled by the user (MAC, OTP, etc.).
+    *   Admin should connect their WhatsApp by scanning a QR code in the admin panel.
+4.  **Deployment/Access:**
+    *   The user wants a way to install the app on devices (initially requested APK, then PWA).
+    *   The user wants a direct URL to access the application in a web browser, similar to other projects they have.
+    *   The Expo Go app experience was not working correctly (white screen).
+
+**User's preferred language**: Portuguese (português)
+
+**what currently exists?**
+A full-stack application with a FastAPI backend, an Expo (React Native) frontend, and a separate Node.js service for WhatsApp notifications. A static web build (PWA) of the frontend is being served by Nginx.
+
+-   **Backend ():** Endpoints for auth, CRUD operations (products, categories, orders), Mercado Pago integration, and proxy endpoints to the WhatsApp service. It includes logic to send WhatsApp notifications for various events.
+-   **Frontend ():** Contains customer and admin flows. The admin panel has screens for managing products, categories, orders, and WhatsApp configuration. The customer area has a product catalog, cart, checkout, and an order history screen.
+-   **WhatsApp Service ():** A Node.js/Baileys service that manages the WhatsApp connection, generates a QR code, and sends messages via API calls from the backend. It now automatically clears old sessions on startup.
+-   **Web App / PWA:** A static build of the Expo app exists in . It is configured as a PWA with a manifest, service worker, and icons, and is served by Nginx.
+
+**Last working item**:
+-   Last item agent was working: The agent received a detailed analysis from the  regarding critical bugs reported by the user: client notifications for approved payments are not working, and the order list screens (both admin and client) are not updating automatically with new data. The agent was about to start implementing the fixes proposed by the troubleshooter.
+-   Status: **NOT STARTED** (on the fixes proposed by the troubleshooter)
+-   Agent Testing Done: N/A
+-   Which testing method agent to use? First, fix the backend issue. Test it with a manual script that mimics the Mercado Pago webhook call. After that, fix the frontend and use the  to verify that the admin and client order pages are displaying the latest orders. A full end-to-end test should be performed.
+-   User Testing Done: N
+
+**All Pending/In progress Issue list**:
+-   Issue 1: Client not notified when a payment is approved (P0 - CRITICAL)
+-   Issue 2: Admin and Client order screens do not update with new orders/statuses (P0 - CRITICAL)
+-   Issue 3: Button to process order delivery in the admin panel was unresponsive (P1)
+-   Issue 4: Expo Go shows a white screen after scanning the QR code (P2)
+
+Issues Detail:
+-   **Issue 1: Client not notified when a payment is approved**
+    -   **Root Cause (identified by ):** The Mercado Pago webhook endpoint () directly updates the order's  in the database but **fails to call the  function**. The notification logic is located inside , so it never gets triggered by the webhook.
+    -   **Next debug checklist:**
+        1.  Open .
+        2.  Locate the  function.
+        3.  Inside the block where it successfully finds a payment and updates the order (), add a call to a notification-sending function.
+        4.  Refactor the notification logic from  into a reusable function, e.g., .
+        5.  Call this new function from both the  and  (for the manual refresh flow).
+    -   Why fix this issue and what will be achieved with the fix? This is a core feature of the application. The client and admin must be notified when a payment is successfully made.
+    -   Status: **NOT STARTED**
+    -   Is recurring issue? Y
+    -   Should Test frontend/backend/both after fix? Backend.
+    -   Blocked on other issue: No.
+
+-   **Issue 2: Admin and Client order screens do not update with new orders/statuses**
+    -   **Root Cause (identified by ):** The frontend screens ( and ) fetch data only once when the component mounts ( with an empty dependency array ). They do not automatically re-fetch data after a new order is created or a status changes.
+    -   **Next debug checklist:**
+        1.  Implement a pull-to-refresh mechanism using  in a  or  on both order screens.
+        2.  The  function of the  should call the data-fetching function ().
+        3.  Alternatively or additionally, use the  hook from  to trigger a re-fetch whenever the user navigates to the screen.
+    -   Why fix this issue and what will be achieved with the fix? Improves user experience significantly, as users currently have to restart the app to see updates. This makes the app feel broken.
+    -   Status: **NOT STARTED**
+    -   Is recurring issue? Y
+    -   Should Test frontend/backend/both after fix? Frontend.
+    -   Blocked on other issue: No.
+
+-   **Issue 3: Button to process order delivery in the admin panel was unresponsive**
+    -   Attempted fixes: The agent fixed this by adding the  header with the admin's token to the  call in .
+    -   Next debug checklist: This should be considered fixed, but needs user verification as part of a full end-to-end test.
+    -   Status: **USER VERIFICATION PENDING**
+    -   Is recurring issue? Y
+    -   Should Test frontend/backend/both after fix? Frontend.
+    -   Blocked on other issue: No.
+
+-   **Issue 4: Expo Go shows a white screen after scanning the QR code**
+    -   Attempted fixes: Agent updated , cleared Metro cache, and restarted services. The issue was not definitively resolved, and the focus shifted to creating a web/PWA version at the user's request.
+    -   Next debug checklist:
+        1.  Review  for any logic that might be breaking the initial render on mobile.
+        2.  Check the device logs from Expo Go to identify the specific error causing the white screen.
+        3.  Ensure all environment variables are correctly loaded on the mobile client.
+    -   Why fix this issue and what will be achieved with this? While the PWA is a workaround, fixing Expo Go is crucial for a smooth development and testing workflow.
+    -   Status: **NOT STARTED**
+    -   Is recurring issue? Y
+    -   Should Test frontend/backend/both after fix? Frontend.
+    -   Blocked on other issue: No.
+
+**In progress Task List**:
+-   **Task 1: Implement Product Image Uploads (P1)**
+    -   Where to resume: The agent installed  and added an  field to the backend  model. The frontend UI in  needs to be built to include an image picker button, a function to handle the image selection, and logic to upload the image (likely as a base64 string) when creating/updating a product.
+    -   What will be achieved with this? Fulfills the user's request for admins to be able to add a thumbnail image to products.
+    -   Status: **IN PROGRESS**
+    -   Should Test frontend/backend/both after fix? Both.
+    -   Blocked on something: No.
+
+**Upcoming and Future Tasks**
+-   **Upcoming Tasks:**
+    -   (P1) Implement Admin Dashboard Reports: The initial request included a dashboard with sales reports (monthly revenue, comparisons, product rankings). This requires new backend endpoints and frontend components in .
+    -   (P2) Implement Product Discounts: The user requested the ability for admins to configure product-specific discounts. This requires backend model/endpoint changes and a UI in the product management screen.
+
+**Completed work in this session**
+-   **WhatsApp Integration:**
+    -   Successfully implemented a Node.js service for WhatsApp notifications.
+    -   Created a frontend screen () where the admin can scan a QR code to connect their WhatsApp account.
+    -   Implemented a disconnect/logout feature to clear credentials and generate a new QR code.
+-   **Notification System:**
+    -   Integrated notification triggers in the backend for new orders, approved payments (for admin), and delivered orders.
+    -   Added phone number normalization to automatically prepend the country code .
+    -   Enhanced admin notifications for new orders to include all custom fields (MAC, OTP, etc.).
+-   **Admin Panel Enhancements:**
+    -   Completely redesigned the Manage Orders screen () to show detailed order information, user data, and copyable custom fields.
+    -   Fixed the Confirm Delivery button functionality.
+-   **Customer Area Enhancements:**
+    -   Redesigned the My Orders screen () to show real orders from the API and allow manual status checks.
+-   **Web Deployment & PWA:**
+    -   Created a static web build of the Expo app.
+    -   Configured Nginx to serve the web app.
+    -   Converted the web app into a full Progressive Web App (PWA) with a manifest, service worker for offline functionality, and app icons.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Frontend:** React Native, Expo, Expo Router (File-based routing), TypeScript, Axios, React Context.
+-   **Backend:** Python, FastAPI, MongoDB (Motor), Pydantic, JWT.
+-   **Notifications:** Node.js, .
+-   **Payments:** Mercado Pago API.
+-   **Deployment:** Services managed by backend                          STOPPING  
+code-server                      STOPPED   Not started
+expo                             STOPPED   Dec 08 06:49 PM
+mongodb                          RUNNING   pid 90, uptime 0:00:06
+nginx                            RUNNING   pid 86, uptime 0:00:06
+nginx-code-proxy                 RUNNING   pid 85, uptime 0:00:06
+whatsapp                         RUNNING   pid 91, uptime 0:00:06
+supervisor> . Frontend PWA is served by Nginx.
+
+**key DB schema**
+-   **products:**  (newly added)
+-   **orders:** 
+-   **users:** 
+
+**All files of reference**
+-   : Contains all API logic. Key functions to check are , , , and the notification helper .
+-   : Admin order management screen. Needs state management/re-fetching improvements.
+-   : Customer order history screen. Needs state management/re-fetching improvements.
+-   : Product management screen where image upload UI needs to be implemented.
+-   : PWA configuration file.
+-   : Nginx config for serving the PWA.
+
+**Critical Info for New Agent**
+-   **Follow the Troubleshooter's Advice:** The  provided a clear diagnosis and solution for the most critical user-reported issues (notifications and screens not updating). Implementing these fixes should be the absolute first priority.
+-   **PWA is the Primary Target:** The user has pivoted to preferring a direct-access web URL. Development and testing should prioritize the PWA served by Nginx. The Expo Go mobile flow is a lower priority as it was reported as broken (white screen).
+-   **EAS Build Issues:** The agent was unable to complete an EAS build due to authentication and configuration hurdles. The user's Expo account is  and they provided a token . If you attempt builds, be aware of this history.
+-   **Testing Flow:** The previous agent used a combination of  and complex shell scripts for end-to-end testing. A key part of the test flow is using the  endpoint to test payment approval logic without a real payment.
+
+**Last 10 User Messages and any pending user messages**
+1.  **make this direct by expo go?**: User asked for a direct install method instead of Expo Go. **Status: Addressed** by explaining the build process.
+2.  **what if I just want the APK for iOS and Android...**: User clarified they want a distributable file. **Status: Addressed** by explaining APK builds.
+3.  **start the build now**: User requested to start the APK build. **Status: In Progress**, but ran into auth issues.
+4.  **I already created the Expo account, I want to proceed**: User confirmed they have an account. **Status: Acknowledged**.
+5.  **User provided Expo Token**: . **Status: Used**, but build still failed.
+6.  **how do I do this on my computer...?**: User asked for instructions to build locally after remote build failed. **Status: Addressed** with instructions.
+7.  **can I do this directly through expo go?**: User asked if Expo Go itself is the final app. **Status: Addressed** by explaining the difference.
+8.  **expo go shows a white screen...**: User reported the Expo Go app is not working and they prefer a direct web link. **Status: In Progress** (PWA was built, but the white screen issue itself is pending).
+9.  **I want a PWA complete...**: User specifically requested PWA features (install, offline, push). **Status: Completed**.
+10. **client is not notified... screens are not updating...**: User reported the critical bugs that the  later analyzed. **Status: In Progress** (analysis done, implementation pending).
+
+**Project Health Check:**
+-   **Broken:**
+    -   Client notifications for approved payments via webhook.
+    -   Automatic data refresh on Admin and Client order screens.
+    -   Expo Go client rendering (shows white screen).
+-   **Mocked:**
+    -   The  endpoint exists for testing payment approvals. This is a useful test utility.
+
+**3rd Party Integrations**
+-   Mercado Pago (Payments) — requires User API Key.
+-   WhatsApp via Baileys () — requires the admin to scan a QR code.
+
+**Testing status**
+-   Testing agent used after significant changes: NO (not recently).
+-   Troubleshoot agent used after agent stuck in loop: YES, and its output is the basis for the next steps.
+-   Test files created: Numerous temporary shell scripts were created for end-to-end testing (e.g., in ). No permanent test files.
+-   Known regressions: The notification and data-refreshing issues are regressions or fundamental flaws that were missed during initial implementation.
+
+**Credentials to test flow:**
+-   **Admin Credentials:**
+    -   CPF: 
+    -   Senha: 
+-   **Expo Account:**
+    -   Username: 
+    -   Token: 
+
+**What agent forgot to execute**
+-   The implementation of the product image upload feature on the frontend is incomplete.
+-   The Admin Dashboard, with sales reports and graphs, from the original problem statement has not been implemented at all.
+-   The feature for admins to add product-specific discounts has not been implemented.
+
+</analysis>
