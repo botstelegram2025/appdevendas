@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Digital Sales App - Payment Notifications Fix
-Testing the critical fix for payment approved notifications via webhook
+Backend Testing Suite for Digital Sales App
+Focus: Phone Number Normalization for WhatsApp API
 """
 
 import requests
 import json
-import time
-from datetime import datetime
+import sys
+from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv('/app/frontend/.env')
+load_dotenv('/app/backend/.env')
 
-# Get backend URL from frontend environment
-BACKEND_URL = os.getenv('EXPO_PUBLIC_BACKEND_URL', 'https://whatsapp-shop-12.preview.emergentagent.com')
-API_BASE = f"{BACKEND_URL}/api"
+# Configuration
+BACKEND_URL = "https://whatsapp-shop-12.preview.emergentagent.com/api"
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+
+# Test credentials
+ADMIN_CPF = "99064820104"
+ADMIN_PASSWORD = "152316"
 
 class PaymentNotificationTester:
     def __init__(self):
