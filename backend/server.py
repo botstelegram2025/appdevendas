@@ -518,6 +518,27 @@ async def check_payment_status(payment_id: str, current_user: Dict = Depends(get
     
     return {"status": status}
 
+@app.post("/api/payments/{payment_id}/simulate-approval")
+async def simulate_payment_approval(payment_id: str, current_user: Dict = Depends(get_current_user)):
+    """Endpoint para simular aprovação de pagamento (apenas para testes)"""
+    payment = payments_collection.find_one({"mercadopago_id": payment_id})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    # Update payment status
+    payments_collection.update_one(
+        {"mercadopago_id": payment_id},
+        {"$set": {"status": "approved"}}
+    )
+    
+    # Update order status
+    orders_collection.update_one(
+        {"_id": ObjectId(payment["order_id"])},
+        {"$set": {"payment_status": "paid", "delivery_status": "processing", "updated_at": datetime.utcnow()}}
+    )
+    
+    return {"status": "approved", "message": "Payment simulated as approved"}
+
 @app.post("/api/payments/webhook")
 async def payment_webhook(request: Request):
     body = await request.body()
