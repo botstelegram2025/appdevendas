@@ -130,6 +130,44 @@ app.post('/send-bulk', async (req, res) => {
     }
 });
 
+app.post('/logout', async (req, res) => {
+    try {
+        console.log('🔄 Desconectando e limpando credenciais...');
+        
+        // Disconnect socket if connected
+        if (sock) {
+            await sock.logout();
+        }
+        
+        // Clear auth folder
+        const authPath = path.join(__dirname, 'auth_info');
+        if (fs.existsSync(authPath)) {
+            fs.rmSync(authPath, { recursive: true, force: true });
+            console.log('✅ Credenciais removidas');
+        }
+        
+        // Reset state
+        isConnected = false;
+        qrCodeData = null;
+        sock = null;
+        
+        // Reconnect to generate new QR
+        console.log('🔄 Reconectando para gerar novo QR Code...');
+        setTimeout(() => connectToWhatsApp(), 2000);
+        
+        res.json({ 
+            success: true, 
+            message: 'Desconectado. Novo QR Code será gerado em instantes.' 
+        });
+    } catch (error) {
+        console.error('Erro ao desconectar:', error);
+        res.status(500).json({ 
+            error: 'Erro ao desconectar', 
+            details: error.message 
+        });
+    }
+});
+
 // Iniciar servidor
 const PORT = 3001;
 app.listen(PORT, () => {
