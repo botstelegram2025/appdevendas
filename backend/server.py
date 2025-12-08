@@ -941,13 +941,19 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
 
 # Helper function to normalize Brazilian phone numbers
 def normalize_phone_number(phone: str) -> str:
-    """Normalize Brazilian phone number to include country code 55"""
+    """Normalize Brazilian phone number to include country code 55 and remove 9th digit"""
     # Remove any non-digit characters
     clean_phone = ''.join(filter(str.isdigit, phone))
     
     # If doesn't start with 55, add it (Brazilian country code)
     if not clean_phone.startswith('55'):
         clean_phone = '55' + clean_phone
+    
+    # Remove 9th digit if present (for WhatsApp API compatibility)
+    # If has 13 digits (55 + DDD + 9 + 8 digits), remove the 9 after DDD
+    # Example: 5561987654321 → 556187654321
+    if len(clean_phone) == 13 and clean_phone[4] == '9':
+        clean_phone = clean_phone[:4] + clean_phone[5:]
     
     return clean_phone
 
