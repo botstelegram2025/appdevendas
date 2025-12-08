@@ -11,15 +11,9 @@ export default function Checkout() {
   const router = useRouter();
   const { user } = useAuth();
   const { items, getTotal, getDiscount, getFinalTotal, clearCart } = useCartStore();
-  const [email, setEmail] = useState(user?.email || '');
   const [loading, setLoading] = useState(false);
 
   const handleCheckout = async () => {
-    if (!email) {
-      Alert.alert('Erro', 'Digite seu e-mail para continuar');
-      return;
-    }
-
     setLoading(true);
     try {
       // Create order
@@ -39,10 +33,10 @@ export default function Checkout() {
       const orderResponse = await axios.post(`${BACKEND_URL}/api/orders`, orderData);
       const order = orderResponse.data;
 
-      // Create PIX payment
+      // Create PIX payment - usar email padrão
       const paymentResponse = await axios.post(`${BACKEND_URL}/api/payments/create-pix`, {
         order_id: order.id,
-        payer_email: email
+        payer_email: user?.email || 'cliente@markimagemtv.com'
       });
 
       // Navigate to payment screen with payment data
