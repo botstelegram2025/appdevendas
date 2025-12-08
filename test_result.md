@@ -227,11 +227,11 @@ backend:
 
   - task: "Payment Webhook Notifications"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -246,6 +246,22 @@ backend:
             4. Refatoradas funções check_payment_status e simulate_payment_approval para usar a mesma helper
           - Files Modified: /app/backend/server.py (linhas ~960-1020, ~639-650, ~743-778, ~704-708)
           - Needs Testing: Simular webhook do Mercado Pago ou usar endpoint /api/simulate-approval/{order_id}
+      - working: true
+        agent: "testing"
+        comment: |
+          ✅ CRITICAL FIX VERIFICATION SUCCESSFUL:
+          - Comprehensive testing completed with 12/12 tests passed
+          - ✅ send_payment_approved_notifications function exists and has correct signature
+          - ✅ Payment simulation endpoint working correctly (/api/payments/{id}/simulate-approval)
+          - ✅ Order status correctly updated to paid/processing after payment approval
+          - ✅ Manual payment status check endpoint functional (/api/payments/{id}/status)
+          - ✅ Webhook endpoint accessible and processing requests correctly
+          - ✅ WhatsApp notifications triggered for both admin and client (logs show attempts)
+          - ✅ Admin notification includes custom fields (MAC, OTP) from order
+          - ✅ Status change detection working (old_status != "approved" check)
+          - ✅ All refactored functions (check_payment_status, simulate_payment_approval) use helper
+          - Note: WhatsApp service not connected in test environment (expected behavior)
+          - Backend logs confirm notification attempts: "⚠️ Falha ao enviar WhatsApp... WhatsApp não está conectado"
 
 frontend:
   - task: "Auto-refresh Orders Screens (Admin & Client)"
