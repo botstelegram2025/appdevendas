@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import axios from 'axios';
-
-const WHATSAPP_SERVICE_URL = 'http://localhost:3001';
+import { BACKEND_URL } from '../../config';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function WhatsAppConfig() {
   const router = useRouter();
