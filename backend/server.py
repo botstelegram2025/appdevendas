@@ -953,22 +953,38 @@ def normalize_phone_number(phone: str) -> str:
 
 # Helper function to send WhatsApp notifications
 async def send_whatsapp_notification(number: str, message: str):
-    """Helper function to send WhatsApp notification"""
+    """Helper function to send WhatsApp notification using WAHA API"""
     try:
         # Normalize phone number
         normalized_number = normalize_phone_number(number)
         
+        # WAHA API endpoint
+        url = f"{WAHA_API_URL}/api/sendText"
+        
+        # WAHA API payload
+        payload = {
+            "session": WAHA_SESSION,
+            "chatId": f"{normalized_number}@c.us",
+            "text": message
+        }
+        
+        headers = {
+            "X-Api-Key": WAHA_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{WHATSAPP_SERVICE_URL}/send",
-                json={"number": normalized_number, "message": message},
+                url,
+                json=payload,
+                headers=headers,
                 timeout=10.0
             )
-            if response.status_code == 200:
-                print(f"✅ WhatsApp enviado para {normalized_number}")
+            if response.status_code == 201 or response.status_code == 200:
+                print(f"✅ WhatsApp enviado via WAHA para {normalized_number}")
                 return True
             else:
-                print(f"⚠️ Falha ao enviar WhatsApp para {normalized_number}: {response.text}")
+                print(f"⚠️ Falha ao enviar WhatsApp via WAHA para {normalized_number}: {response.status_code} - {response.text}")
                 return False
     except Exception as e:
         print(f"❌ Erro ao enviar WhatsApp para {number}: {str(e)}")
