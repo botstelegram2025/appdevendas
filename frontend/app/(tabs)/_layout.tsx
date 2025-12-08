@@ -1,22 +1,36 @@
+import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { View, Pressable } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function TabsLayout() {
+  const { updateActivity } = useAuth();
+
+  // Atualizar atividade quando o usuário interage com as tabs
+  const handleTabPress = () => {
+    updateActivity();
+  };
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#999',
-        tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60
-        }
-      }}
-    >
+    <View style={{ flex: 1 }} onTouchStart={updateActivity}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: '#007AFF',
+          tabBarInactiveTintColor: '#999',
+          tabBarStyle: {
+            borderTopWidth: 1,
+            borderTopColor: '#E0E0E0',
+            paddingBottom: 8,
+            paddingTop: 8,
+            height: 60
+          }
+        }}
+        screenListeners={{
+          tabPress: handleTabPress
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
