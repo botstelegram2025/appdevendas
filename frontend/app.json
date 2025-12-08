@@ -48,7 +48,11 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "d021d224-e474-452c-b75c-d5a7aa6af546"
       }
-    }
+    },
+    "owner": "markimagem"
   }
 }
