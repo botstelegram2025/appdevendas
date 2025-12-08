@@ -861,7 +861,7 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
 
 # WhatsApp Service Configuration
 WHATSAPP_SERVICE_URL = "http://localhost:3001"
-ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP_NUMBER", "5561981447719")  # Número do admin para receber notificações
+ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP", "5561981447719")  # Número do admin para receber notificações
 
 # Helper function to send WhatsApp notifications
 async def send_whatsapp_notification(number: str, message: str):
