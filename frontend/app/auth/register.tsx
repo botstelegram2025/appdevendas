@@ -119,14 +119,16 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Telefone com DDD *</Text>
+              <Text style={styles.label}>Celular com DDD (WhatsApp) *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="11999999999"
+                placeholder="(61) 98765-4321"
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={handlePhoneChange}
                 keyboardType="numeric"
+                maxLength={15}
               />
+              <Text style={styles.hint}>⚠️ Apenas celular (começa com 9) para receber notificações</Text>
             </View>
 
             <View style={styles.inputContainer}>
