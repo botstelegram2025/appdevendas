@@ -28,17 +28,45 @@ export default function WhatsAppConfig() {
       const response = await axios.get(`${BACKEND_URL}/api/whatsapp/status`);
       setIsConnected(response.data.connected);
       
-      if (!response.data.connected && response.data.hasQR) {
-        // Buscar QR Code
-        const qrResponse = await axios.get(`${BACKEND_URL}/api/whatsapp/qr`);
-        if (qrResponse.data.qr) {
-          setQrCode(qrResponse.data.qr);
+      if (!response.data.connected) {
+        // Sempre tentar buscar QR Code quando não conectado
+        try {
+          const qrResponse = await axios.get(`${BACKEND_URL}/api/whatsapp/qr`);
+          if (qrResponse.data.qr) {
+            setQrCode(qrResponse.data.qr);
+          } else {
+            setQrCode(null);
+          }
+        } catch (qrError) {
+          console.log('QR não disponível ainda');
+          setQrCode(null);
         }
-      } else if (response.data.connected) {
+      } else {
         setQrCode(null);
       }
     } catch (error) {
       console.error('Erro ao verificar status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startSession = async () => {
+    setLoading(true);
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/whatsapp/start`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }
+      );
+      Alert.alert('Sucesso', 'Sessão iniciada! Aguarde o QR Code...');
+      setTimeout(checkStatus, 3000);
+    } catch (error: any) {
+      Alert.alert('Erro', error.response?.data?.detail || 'Erro ao iniciar sessão');
     } finally {
       setLoading(false);
     }
