@@ -18,16 +18,20 @@ export default function Register() {
     // Remove tudo que não é número
     const numbers = text.replace(/\D/g, '');
     
-    // Limita a 11 dígitos (DDD + 9 dígitos)
-    const limited = numbers.slice(0, 11);
+    // Limita a 13 dígitos (55 + DDD + 9 dígitos)
+    const limited = numbers.slice(0, 13);
     
-    // Aplica a máscara (XX) XXXXX-XXXX
-    if (limited.length <= 2) {
-      return limited;
-    } else if (limited.length <= 7) {
-      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+    // Aplica a máscara +55 (XX) XXXXX-XXXX
+    if (limited.length === 0) {
+      return '';
+    } else if (limited.length <= 2) {
+      return `+${limited}`;
+    } else if (limited.length <= 4) {
+      return `+${limited.slice(0, 2)} (${limited.slice(2)}`;
+    } else if (limited.length <= 9) {
+      return `+${limited.slice(0, 2)} (${limited.slice(2, 4)}) ${limited.slice(4)}`;
     } else {
-      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+      return `+${limited.slice(0, 2)} (${limited.slice(2, 4)}) ${limited.slice(4, 9)}-${limited.slice(9)}`;
     }
   };
 
@@ -40,19 +44,24 @@ export default function Register() {
     // Remove formatação
     const numbers = phone.replace(/\D/g, '');
     
-    // Deve ter 11 dígitos (DDD + 9 dígitos)
-    if (numbers.length !== 11) {
+    // Deve ter 13 dígitos (55 + DDD + 9 dígitos) ou 12 dígitos (55 + DDD + 8 dígitos)
+    if (numbers.length < 12 || numbers.length > 13) {
       return false;
     }
     
-    // DDD deve ser válido (10-99)
-    const ddd = parseInt(numbers.slice(0, 2));
+    // Deve começar com 55 (Brasil)
+    if (!numbers.startsWith('55')) {
+      return false;
+    }
+    
+    // DDD deve ser válido (11-99)
+    const ddd = parseInt(numbers.slice(2, 4));
     if (ddd < 11 || ddd > 99) {
       return false;
     }
     
-    // Primeiro dígito do número deve ser 9 (celular)
-    if (numbers[2] !== '9') {
+    // Se tem 13 dígitos, o primeiro dígito após o DDD deve ser 9 (celular)
+    if (numbers.length === 13 && numbers[4] !== '9') {
       return false;
     }
     
