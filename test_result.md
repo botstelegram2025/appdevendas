@@ -331,11 +331,30 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Auto-refresh Orders Screens (Admin & Client)"
+    - "Phone Number Normalization for WhatsApp API"
   stuck_tasks:
     - "Mercado Pago Payment Integration"
   test_all: false
   test_priority: "high_first"
+  test_instructions: |
+    🧪 TESTE PRIORITÁRIO: Normalização de Números de Telefone
+    
+    1. REGISTRO DE USUÁRIO:
+       - POST /api/auth/register com phone: "+55 (61) 98765-4321" ou "5561987654321"
+       - Verificar resposta 200
+       - Buscar o usuário no MongoDB e verificar que phone = "556187654321" (12 dígitos)
+    
+    2. ATUALIZAÇÃO DE PERFIL:
+       - Login com usuário criado
+       - PUT /api/auth/profile com phone: "+55 (11) 91234-5678"
+       - Verificar que foi salvo como "551112345678" (12 dígitos)
+    
+    3. NOTIFICAÇÕES WHATSAPP:
+       - Criar pedido de teste
+       - Simular aprovação de pagamento
+       - Verificar nos logs do backend se as tentativas de envio WhatsApp foram feitas
+       - Número de destino deve ter 12 dígitos no log
+       - Confirmar se erro "No LID for user" ainda ocorre (deve desaparecer)
 
 agent_communication:
   - agent: "testing"
