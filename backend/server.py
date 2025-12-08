@@ -1118,14 +1118,27 @@ async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_a
 
 @app.post("/api/whatsapp/logout")
 async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
-    """Desconectar WhatsApp e gerar novo QR code (admin only)"""
+    """Desconectar WhatsApp usando WAHA API (admin only)"""
     try:
+        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/stop"
+        headers = {"X-Api-Key": WAHA_API_KEY}
+        
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{WHATSAPP_SERVICE_URL}/logout",
-                timeout=10.0
-            )
-            return response.json()
+            # Stop the session
+            response = await client.post(url, headers=headers, timeout=10.0)
+            
+            if response.status_code in [200, 201]:
+                # Start the session again to generate new QR
+                start_url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/start"
+                start_response = await client.post(start_url, headers=headers, timeout=10.0)
+                
+                return {
+                    "success": True, 
+                    "message": "WhatsApp desconectado. Novo QR Code será gerado.",
+                    "status": "STOPPED"
+                }
+            else:
+                return {"success": False, "error": f"Erro ao desconectar: {response.status_code} - {response.text}"}
     except Exception as e:
         print(f"WhatsApp logout error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")
