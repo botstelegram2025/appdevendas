@@ -448,14 +448,28 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
         if response.status_code in [200, 201]:
             mp_response = response.json()
             
-            # Save payment
+            # Get QR Code from point_of_interaction
+            poi = mp_response.get("point_of_interaction", {})
+            transaction_data = poi.get("transaction_data", {})
+            qr_code = transaction_data.get("qr_code", "")
+            qr_code_base64 = transaction_data.get("qr_code_base64", "")
+            
+            # Check if QR Code was generated
+            if not qr_code:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"QR Code não gerado. Status: {mp_response.get('status')} - {mp_response.get('status_detail', 'unknown')}"
+                )
+            
+            # Save payment (even if status is rejected, we save the QR code for reference)
             payment_doc = {
                 "order_id": payment_data.order_id,
                 "mercadopago_id": str(mp_response["id"]),
                 "payment_method": "pix",
                 "status": mp_response["status"],
-                "qr_code": mp_response["point_of_interaction"]["transaction_data"]["qr_code"],
-                "qr_code_base64": mp_response["point_of_interaction"]["transaction_data"]["qr_code_base64"],
+                "status_detail": mp_response.get("status_detail", ""),
+                "qr_code": qr_code,
+                "qr_code_base64": qr_code_base64,
                 "created_at": datetime.utcnow()
             }
             payments_collection.insert_one(payment_doc)
@@ -463,8 +477,9 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
             return {
                 "payment_id": str(mp_response["id"]),
                 "status": mp_response["status"],
-                "qr_code": payment_doc["qr_code"],
-                "qr_code_base64": payment_doc["qr_code_base64"]
+                "status_detail": mp_response.get("status_detail", ""),
+                "qr_code": qr_code,
+                "qr_code_base64": qr_code_base64
             }
         else:
             # Log detailed error
