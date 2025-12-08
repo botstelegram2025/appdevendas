@@ -186,5 +186,11 @@ app.post('/logout', async (req, res) => {
 const PORT = 3001;
 app.listen(PORT, () => {
     console.log(`🚀 Serviço WhatsApp rodando na porta ${PORT}`);
+    
+    // Limpar sessões antigas ao iniciar
+    console.log('🔄 Iniciando nova sessão WhatsApp...');
+    clearOldSessions();
+    
+    // Conectar ao WhatsApp com nova sessão
     connectToWhatsApp();
 });
