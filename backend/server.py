@@ -1038,26 +1038,41 @@ Obrigado pela preferência! 🙏"""
 # WhatsApp Service Proxy Routes
 
 @app.get("/api/whatsapp/status")
-async def whatsapp_status():
-    """Proxy to WhatsApp service status endpoint"""
+async def get_whatsapp_status():
     try:
+        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}"
+        headers = {"X-Api-Key": WAHA_API_KEY}
+        
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{WHATSAPP_SERVICE_URL}/status", timeout=5.0)
-            return response.json()
+            response = await client.get(url, headers=headers, timeout=5.0)
+            data = response.json()
+            
+            # Adaptar resposta WAHA para o formato esperado
+            return {
+                "connected": data.get("status") == "WORKING",
+                "hasQR": data.get("status") == "SCAN_QR_CODE",
+                "status": data.get("status", "STOPPED")
+            }
     except Exception as e:
-        print(f"WhatsApp status error: {str(e)}")
-        return {"connected": False, "hasQR": False, "error": str(e)}
+        return {"connected": False, "error": str(e), "status": "ERROR"}
 
 @app.get("/api/whatsapp/qr")
-async def whatsapp_qr():
-    """Proxy to WhatsApp service QR code endpoint"""
+async def get_whatsapp_qr():
     try:
+        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/me/qr"
+        headers = {"X-Api-Key": WAHA_API_KEY}
+        
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{WHATSAPP_SERVICE_URL}/qr", timeout=5.0)
-            return response.json()
+            response = await client.get(url, headers=headers, timeout=5.0)
+            
+            if response.status_code == 200:
+                data = response.json()
+                # WAHA retorna { "qr": "data:image/png;base64..." }
+                return {"qr": data.get("qr"), "message": "QR Code disponível"}
+            else:
+                return {"error": "QR Code não disponível", "message": "Aguardando..."}
     except Exception as e:
-        print(f"WhatsApp QR error: {str(e)}")
-        return {"message": "Erro ao obter QR Code", "error": str(e)}
+        return {"error": str(e), "message": "Erro ao obter QR Code"}
 
 class WhatsAppMessage(BaseModel):
     number: str
