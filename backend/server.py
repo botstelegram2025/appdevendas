@@ -1132,12 +1132,17 @@ async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_a
 async def whatsapp_start(current_user: Dict = Depends(get_admin_user)):
     """Iniciar sessão WAHA (admin only)"""
     try:
-        url = f"{WAHA_API_URL}/api/sessions/start"
+        url = f"{WAHA_API_URL}/api/sessions/"
         headers = {"X-Api-Key": WAHA_API_KEY, "Content-Type": "application/json"}
-        payload = {"name": WAHA_SESSION}
+        payload = {
+            "name": WAHA_SESSION,
+            "start": True
+        }
         
         async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload, headers=headers, timeout=10.0)
+            response = await client.post(url, json=payload, headers=headers, timeout=30.0)
+            
+            print(f"WAHA start session response: {response.status_code} - {response.text}")
             
             if response.status_code in [200, 201]:
                 return {"success": True, "message": "Sessão iniciada. Aguarde o QR Code."}
