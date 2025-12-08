@@ -735,16 +735,27 @@ async def payment_webhook(request: Request):
             # Update payment and order
             payment = payments_collection.find_one({"mercadopago_id": str(payment_id)})
             if payment:
+                old_status = payment.get("status", "pending")
+                
                 payments_collection.update_one(
                     {"mercadopago_id": str(payment_id)},
                     {"$set": {"status": status}}
                 )
                 
-                if status == "approved":
+                # Only process if status changed to approved
+                if status == "approved" and old_status != "approved":
                     orders_collection.update_one(
                         {"_id": ObjectId(payment["order_id"])},
                         {"$set": {"payment_status": "paid", "delivery_status": "processing", "updated_at": datetime.utcnow()}}
                     )
+                    
+                    # Get order and user info for notifications
+                    order = orders_collection.find_one({"_id": ObjectId(payment["order_id"])})
+                    user = users_collection.find_one({"_id": ObjectId(order["user_id"])}) if order else None
+                    
+                    if order and user:
+                        # Send notifications using the helper function
+                        await send_payment_approved_notifications(order, user)
     
     return {"status": "ok"}
 
