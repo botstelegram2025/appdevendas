@@ -1,304 +1,443 @@
 diff --git a/backend/server.py b/backend/server.py
-index b7c6547..032328c 100644
+index b508f6b..55b4cfb 100644
 --- a/backend/server.py
 +++ b/backend/server.py
-@@ -937,8 +937,7 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
-     return result
+@@ -1038,26 +1038,41 @@ Obrigado pela preferência! 🙏"""
+ # WhatsApp Service Proxy Routes
  
- # WhatsApp Service Configuration
--WHATSAPP_SERVICE_URL = "http://localhost:3001"
--ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP", "5561981447719")  # Número do admin para receber notificações
-+# WAHA WhatsApp helper function
+ @app.get("/api/whatsapp/status")
+-async def whatsapp_status():
+-    """Proxy to WhatsApp service status endpoint"""
++async def get_whatsapp_status():
+     try:
++        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}"
++        headers = {"X-Api-Key": WAHA_API_KEY}
++        
+         async with httpx.AsyncClient() as client:
+-            response = await client.get(f"{WHATSAPP_SERVICE_URL}/status", timeout=5.0)
+-            return response.json()
++            response = await client.get(url, headers=headers, timeout=5.0)
++            data = response.json()
++            
++            # Adaptar resposta WAHA para o formato esperado
++            return {
++                "connected": data.get("status") == "WORKING",
++                "hasQR": data.get("status") == "SCAN_QR_CODE",
++                "status": data.get("status", "STOPPED")
++            }
+     except Exception as e:
+-        print(f"WhatsApp status error: {str(e)}")
+-        return {"connected": False, "hasQR": False, "error": str(e)}
++        return {"connected": False, "error": str(e), "status": "ERROR"}
  
- # Helper function to normalize Brazilian phone numbers
- def normalize_phone_number(phone: str) -> str:
+ @app.get("/api/whatsapp/qr")
+-async def whatsapp_qr():
+-    """Proxy to WhatsApp service QR code endpoint"""
++async def get_whatsapp_qr():
+     try:
++        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/me/qr"
++        headers = {"X-Api-Key": WAHA_API_KEY}
++        
+         async with httpx.AsyncClient() as client:
+-            response = await client.get(f"{WHATSAPP_SERVICE_URL}/qr", timeout=5.0)
+-            return response.json()
++            response = await client.get(url, headers=headers, timeout=5.0)
++            
++            if response.status_code == 200:
++                data = response.json()
++                # WAHA retorna { "qr": "data:image/png;base64..." }
++                return {"qr": data.get("qr"), "message": "QR Code disponível"}
++            else:
++                return {"error": "QR Code não disponível", "message": "Aguardando..."}
+     except Exception as e:
+-        print(f"WhatsApp QR error: {str(e)}")
+-        return {"message": "Erro ao obter QR Code", "error": str(e)}
++        return {"error": str(e), "message": "Erro ao obter QR Code"}
+ 
+ class WhatsAppMessage(BaseModel):
+     number: str
+@@ -1065,29 +1080,65 @@ class WhatsAppMessage(BaseModel):
+ 
+ @app.post("/api/whatsapp/send")
+ async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_admin_user)):
+-    """Proxy to WhatsApp service send endpoint (admin only)"""
++    """Send WhatsApp message using WAHA API (admin only)"""
+     try:
++        # Normalize phone number
++        normalized_number = normalize_phone_number(msg.number)
++        
++        # WAHA API endpoint
++        url = f"{WAHA_API_URL}/api/sendText"
++        
++        # WAHA API payload
++        payload = {
++            "session": WAHA_SESSION,
++            "chatId": f"{normalized_number}@c.us",
++            "text": msg.message
++        }
++        
++        headers = {
++            "X-Api-Key": WAHA_API_KEY,
++            "Content-Type": "application/json"
++        }
++        
+         async with httpx.AsyncClient() as client:
+             response = await client.post(
+-                f"{WHATSAPP_SERVICE_URL}/send",
+-                json={"number": msg.number, "message": msg.message},
++                url,
++                json=payload,
++                headers=headers,
+                 timeout=10.0
+             )
+-            return response.json()
++            
++            if response.status_code in [200, 201]:
++                return {"success": True, "message": "Mensagem enviada com sucesso"}
++            else:
++                return {"success": False, "error": f"Erro WAHA: {response.status_code} - {response.text}"}
+     except Exception as e:
+         print(f"WhatsApp send error: {str(e)}")
+         raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {str(e)}")
+ 
+ @app.post("/api/whatsapp/logout")
+ async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
+-    """Desconectar WhatsApp e gerar novo QR code (admin only)"""
++    """Desconectar WhatsApp usando WAHA API (admin only)"""
+     try:
++        url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/stop"
++        headers = {"X-Api-Key": WAHA_API_KEY}
++        
+         async with httpx.AsyncClient() as client:
+-            response = await client.post(
+-                f"{WHATSAPP_SERVICE_URL}/logout",
+-                timeout=10.0
+-            )
+-            return response.json()
++            # Stop the session
++            response = await client.post(url, headers=headers, timeout=10.0)
++            
++            if response.status_code in [200, 201]:
++                # Start the session again to generate new QR
++                start_url = f"{WAHA_API_URL}/api/sessions/{WAHA_SESSION}/start"
++                await client.post(start_url, headers=headers, timeout=10.0)
++                
++                return {
++                    "success": True, 
++                    "message": "WhatsApp desconectado. Novo QR Code será gerado.",
++                    "status": "STOPPED"
++                }
++            else:
++                return {"success": False, "error": f"Erro ao desconectar: {response.status_code} - {response.text}"}
+     except Exception as e:
+         print(f"WhatsApp logout error: {str(e)}")
+         raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")
 diff --git a/model.patch b/model.patch
-index 3e7399e..e69de29 100644
+index 31325cc..8cbb622 100644
 --- a/model.patch
 +++ b/model.patch
-@@ -1,285 +0,0 @@
--diff --git a/frontend/app/checkout.tsx b/frontend/app/checkout.tsx
--index 99f2efe..3be1244 100644
----- a/frontend/app/checkout.tsx
--+++ b/frontend/app/checkout.tsx
--@@ -84,19 +84,10 @@ export default function Checkout() {
+@@ -1,304 +0,0 @@
+-diff --git a/backend/server.py b/backend/server.py
+-index b7c6547..032328c 100644
+---- a/backend/server.py
+-+++ b/backend/server.py
+-@@ -937,8 +937,7 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
+-     return result
 - 
--         <ScrollView style={styles.content}>
--           <View style={styles.section}>
---            <Text style={styles.sectionTitle}>Dados para Pagamento</Text>
---            <View style={styles.inputContainer}>
---              <Text style={styles.label}>E-mail *</Text>
---              <TextInput
---                style={styles.input}
---                value={email}
---                onChangeText={setEmail}
---                placeholder="seu@email.com"
---                keyboardType="email-address"
---                autoCapitalize="none"
---              />
---              <Text style={styles.hint}>Usado para confirmação do pagamento</Text>
---            </View>
--+            <Text style={styles.sectionTitle}>Resumo da Compra</Text>
--+            <Text style={styles.infoText}>
--+              Confirme os itens do seu carrinho e finalize o pagamento via PIX
--+            </Text>
--           </View>
+- # WhatsApp Service Configuration
+--WHATSAPP_SERVICE_URL = "http://localhost:3001"
+--ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP", "5561981447719")  # Número do admin para receber notificações
+-+# WAHA WhatsApp helper function
 - 
--           <View style={styles.section}>
+- # Helper function to normalize Brazilian phone numbers
+- def normalize_phone_number(phone: str) -> str:
 -diff --git a/model.patch b/model.patch
--index 56d311f..e69de29 100644
+-index 3e7399e..e69de29 100644
 ---- a/model.patch
 -+++ b/model.patch
--@@ -1,252 +0,0 @@
+-@@ -1,285 +0,0 @@
+--diff --git a/frontend/app/checkout.tsx b/frontend/app/checkout.tsx
+--index 99f2efe..3be1244 100644
+----- a/frontend/app/checkout.tsx
+--+++ b/frontend/app/checkout.tsx
+--@@ -84,19 +84,10 @@ export default function Checkout() {
+-- 
+--         <ScrollView style={styles.content}>
+--           <View style={styles.section}>
+---            <Text style={styles.sectionTitle}>Dados para Pagamento</Text>
+---            <View style={styles.inputContainer}>
+---              <Text style={styles.label}>E-mail *</Text>
+---              <TextInput
+---                style={styles.input}
+---                value={email}
+---                onChangeText={setEmail}
+---                placeholder="seu@email.com"
+---                keyboardType="email-address"
+---                autoCapitalize="none"
+---              />
+---              <Text style={styles.hint}>Usado para confirmação do pagamento</Text>
+---            </View>
+--+            <Text style={styles.sectionTitle}>Resumo da Compra</Text>
+--+            <Text style={styles.infoText}>
+--+              Confirme os itens do seu carrinho e finalize o pagamento via PIX
+--+            </Text>
+--           </View>
+-- 
+--           <View style={styles.section}>
 --diff --git a/model.patch b/model.patch
---index 7b27efe..e69de29 100644
+--index 56d311f..e69de29 100644
 ----- a/model.patch
 --+++ b/model.patch
---@@ -1,247 +0,0 @@
+--@@ -1,252 +0,0 @@
 ---diff --git a/model.patch b/model.patch
----index 8056d35..e69de29 100644
+---index 7b27efe..e69de29 100644
 ------ a/model.patch
 ---+++ b/model.patch
----@@ -1,161 +0,0 @@
+---@@ -1,247 +0,0 @@
 ----diff --git a/model.patch b/model.patch
-----index 6476adb..e69de29 100644
+----index 8056d35..e69de29 100644
 ------- a/model.patch
 ----+++ b/model.patch
-----@@ -1,156 +0,0 @@
------diff --git a/test_result.md b/test_result.md
------index 187cba4..c7675be 100644
--------- a/test_result.md
------+++ b/test_result.md
------@@ -100,4 +100,148 @@
------ 
------ #====================================================================================================
------ # Testing Data - Main Agent and testing sub agent both should log testing data below this section
-------#====================================================================================================
------\ No newline at end of file
------+#====================================================================================================
------+
------+user_problem_statement: "Teste completamente o backend da aplicação de vendas digitais - Sistema de vendas de produtos digitais (ativações de apps e créditos IPTV) com autenticação, CRUD, pedidos e pagamentos via Mercado Pago PIX, dashboard administrativo"
------+
------+backend:
------+  - task: "Health Check API"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ Health endpoint working correctly - returns 200 with proper status message"
------+
------+  - task: "User Authentication (Register/Login)"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ User registration and login working perfectly. JWT tokens generated correctly, profile retrieval working"
------+
------+  - task: "Admin Authentication"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ Admin login working with provided credentials (CPF: 12345678900, password: 123456). Admin creation endpoint also functional"
------+
------+  - task: "Categories CRUD Operations"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ All category operations working: GET (public), POST/PUT/DELETE (admin protected). Route protection working correctly"
------+
------+  - task: "Products CRUD Operations"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ All product operations working: GET (public), POST/PUT/DELETE (admin protected), filtering by category, product details retrieval"
------+
------+  - task: "Orders Management (Client)"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ Order creation, listing, and details retrieval working correctly for authenticated users"
------+
------+  - task: "Orders Management (Admin)"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ Admin order management working: list all orders, filter by status, view details, mark as delivered"
------+
------+  - task: "Dashboard Statistics"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ All dashboard endpoints working: stats, monthly revenue, top products, sales by category"
------+
------+  - task: "Route Protection & Authorization"
------+    implemented: true
------+    working: true
------+    file: "backend/server.py"
------+    stuck_count: 0
------+    priority: "high"
------+    needs_retesting: false
------+    status_history:
------+      - working: true
------+        agent: "testing"
------+        comment: "✅ Route protection working correctly - admin routes return 403 when accessed with user tokens"
------+
------+  - task: "Mercado Pago Payment Integration"
------+    implemented: true
------+    working: false
------+    file: "backend/server.py"
------+    stuck_count: 1
------+    priority: "medium"
------+    needs_retesting: false
------+    status_history:
------+      - working: false
------+        agent: "testing"
------+        comment: "❌ Payment creation fails with Mercado Pago authorization error (PA_UNAUTHORIZED_RESULT_FROM_POLICIES). This is expected with test credentials but indicates **mocked** payment integration needed for production"
------+
------+frontend:
------+  # Frontend testing not performed as per instructions
------+
------+metadata:
------+  created_by: "testing_agent"
------+  version: "1.0"
------+  test_sequence: 1
------+  run_ui: false
------+
------+test_plan:
------+  current_focus:
------+    - "Mercado Pago Payment Integration"
------+  stuck_tasks:
------+    - "Mercado Pago Payment Integration"
------+  test_all: false
------+  test_priority: "high_first"
------+
------+agent_communication:
------+  - agent: "testing"
------+    message: "Comprehensive backend testing completed. 24/26 tests passed. All core functionality working correctly. Only payment integration failing due to Mercado Pago authorization (expected with test credentials). System is production-ready except for payment configuration."
------\ No newline at end of file
----diff --git a/test_result.md b/test_result.md
----index be3ddea..49387c1 100644
------- a/test_result.md
----+++ b/test_result.md
----@@ -227,11 +227,11 @@ backend:
---- 
----   - task: "Payment Webhook Notifications"
----     implemented: true
-----    working: "NA"
----+    working: true
----     file: "backend/server.py"
----     stuck_count: 0
----     priority: "high"
-----    needs_retesting: true
----+    needs_retesting: false
----     status_history:
----       - working: "NA"
----         agent: "main"
----@@ -246,6 +246,22 @@ backend:
----             4. Refatoradas funções check_payment_status e simulate_payment_approval para usar a mesma helper
----           - Files Modified: /app/backend/server.py (linhas ~960-1020, ~639-650, ~743-778, ~704-708)
----           - Needs Testing: Simular webhook do Mercado Pago ou usar endpoint /api/simulate-approval/{order_id}
----+      - working: true
----+        agent: "testing"
----+        comment: |
----+          ✅ CRITICAL FIX VERIFICATION SUCCESSFUL:
----+          - Comprehensive testing completed with 12/12 tests passed
----+          - ✅ send_payment_approved_notifications function exists and has correct signature
----+          - ✅ Payment simulation endpoint working correctly (/api/payments/{id}/simulate-approval)
----+          - ✅ Order status correctly updated to paid/processing after payment approval
----+          - ✅ Manual payment status check endpoint functional (/api/payments/{id}/status)
----+          - ✅ Webhook endpoint accessible and processing requests correctly
----+          - ✅ WhatsApp notifications triggered for both admin and client (logs show attempts)
----+          - ✅ Admin notification includes custom fields (MAC, OTP) from order
----+          - ✅ Status change detection working (old_status != "approved" check)
----+          - ✅ All refactored functions (check_payment_status, simulate_payment_approval) use helper
----+          - Note: WhatsApp service not connected in test environment (expected behavior)
----+          - Backend logs confirm notification attempts: "⚠️ Falha ao enviar WhatsApp... WhatsApp não está conectado"
---- 
---- frontend:
----   - task: "Auto-refresh Orders Screens (Admin & Client)"
----@@ -279,7 +295,6 @@ metadata:
---- 
---- test_plan:
----   current_focus:
-----    - "Payment Webhook Notifications"
----     - "Auto-refresh Orders Screens (Admin & Client)"
----   stuck_tasks:
----     - "Mercado Pago Payment Integration"
----@@ -310,4 +325,28 @@ agent_communication:
----       
----       Credenciais para teste:
----       - Admin: CPF 99064820104, Senha 152316
-----      - User: (já existe no banco)
----\ No newline at end of file
----+      - User: (já existe no banco)
----+  
----+  - agent: "testing"
----+    message: |
----+      🎉 CRITICAL PAYMENT NOTIFICATION FIX - TESTING COMPLETED SUCCESSFULLY:
----+      
----+      ✅ COMPREHENSIVE VERIFICATION (12/12 tests passed):
----+      - Payment notification system fully functional
----+      - send_payment_approved_notifications() function working correctly
----+      - Webhook integration processing payment status changes
----+      - Order status updates working (pending → paid/processing)
----+      - Custom fields (MAC, OTP) included in admin notifications
----+      - Both admin and client notifications triggered
----+      
----+      ✅ BACKEND LOGS CONFIRM:
----+      - "⚠️ Falha ao enviar WhatsApp para 556195021362" (admin notification attempt)
----+      - "⚠️ Falha ao enviar WhatsApp para 5561987654322" (client notification attempt)
----+      - WhatsApp service not connected (expected in test environment)
----+      
----+      ✅ ALL ENDPOINTS TESTED:
----+      - /api/payments/{id}/simulate-approval ✅
----+      - /api/payments/{id}/status ✅
----+      - /api/payments/webhook ✅
----+      
----+      🚀 READY FOR PRODUCTION: The critical payment notification fix is working perfectly!
----\ No newline at end of file
+----@@ -1,161 +0,0 @@
+-----diff --git a/model.patch b/model.patch
+-----index 6476adb..e69de29 100644
+-------- a/model.patch
+-----+++ b/model.patch
+-----@@ -1,156 +0,0 @@
+------diff --git a/test_result.md b/test_result.md
+------index 187cba4..c7675be 100644
+--------- a/test_result.md
+------+++ b/test_result.md
+------@@ -100,4 +100,148 @@
+------ 
+------ #====================================================================================================
+------ # Testing Data - Main Agent and testing sub agent both should log testing data below this section
+-------#====================================================================================================
+------\ No newline at end of file
+------+#====================================================================================================
+------+
+------+user_problem_statement: "Teste completamente o backend da aplicação de vendas digitais - Sistema de vendas de produtos digitais (ativações de apps e créditos IPTV) com autenticação, CRUD, pedidos e pagamentos via Mercado Pago PIX, dashboard administrativo"
+------+
+------+backend:
+------+  - task: "Health Check API"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ Health endpoint working correctly - returns 200 with proper status message"
+------+
+------+  - task: "User Authentication (Register/Login)"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ User registration and login working perfectly. JWT tokens generated correctly, profile retrieval working"
+------+
+------+  - task: "Admin Authentication"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ Admin login working with provided credentials (CPF: 12345678900, password: 123456). Admin creation endpoint also functional"
+------+
+------+  - task: "Categories CRUD Operations"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ All category operations working: GET (public), POST/PUT/DELETE (admin protected). Route protection working correctly"
+------+
+------+  - task: "Products CRUD Operations"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ All product operations working: GET (public), POST/PUT/DELETE (admin protected), filtering by category, product details retrieval"
+------+
+------+  - task: "Orders Management (Client)"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ Order creation, listing, and details retrieval working correctly for authenticated users"
+------+
+------+  - task: "Orders Management (Admin)"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ Admin order management working: list all orders, filter by status, view details, mark as delivered"
+------+
+------+  - task: "Dashboard Statistics"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ All dashboard endpoints working: stats, monthly revenue, top products, sales by category"
+------+
+------+  - task: "Route Protection & Authorization"
+------+    implemented: true
+------+    working: true
+------+    file: "backend/server.py"
+------+    stuck_count: 0
+------+    priority: "high"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: true
+------+        agent: "testing"
+------+        comment: "✅ Route protection working correctly - admin routes return 403 when accessed with user tokens"
+------+
+------+  - task: "Mercado Pago Payment Integration"
+------+    implemented: true
+------+    working: false
+------+    file: "backend/server.py"
+------+    stuck_count: 1
+------+    priority: "medium"
+------+    needs_retesting: false
+------+    status_history:
+------+      - working: false
+------+        agent: "testing"
+------+        comment: "❌ Payment creation fails with Mercado Pago authorization error (PA_UNAUTHORIZED_RESULT_FROM_POLICIES). This is expected with test credentials but indicates **mocked** payment integration needed for production"
+------+
+------+frontend:
+------+  # Frontend testing not performed as per instructions
+------+
+------+metadata:
+------+  created_by: "testing_agent"
+------+  version: "1.0"
+------+  test_sequence: 1
+------+  run_ui: false
+------+
+------+test_plan:
+------+  current_focus:
+------+    - "Mercado Pago Payment Integration"
+------+  stuck_tasks:
+------+    - "Mercado Pago Payment Integration"
+------+  test_all: false
+------+  test_priority: "high_first"
+------+
+------+agent_communication:
+------+  - agent: "testing"
+------+    message: "Comprehensive backend testing completed. 24/26 tests passed. All core functionality working correctly. Only payment integration failing due to Mercado Pago authorization (expected with test credentials). System is production-ready except for payment configuration."
+------\ No newline at end of file
+----diff --git a/test_result.md b/test_result.md
+----index be3ddea..49387c1 100644
+------- a/test_result.md
+----+++ b/test_result.md
+----@@ -227,11 +227,11 @@ backend:
+---- 
+----   - task: "Payment Webhook Notifications"
+----     implemented: true
+-----    working: "NA"
+----+    working: true
+----     file: "backend/server.py"
+----     stuck_count: 0
+----     priority: "high"
+-----    needs_retesting: true
+----+    needs_retesting: false
+----     status_history:
+----       - working: "NA"
+----         agent: "main"
+----@@ -246,6 +246,22 @@ backend:
+----             4. Refatoradas funções check_payment_status e simulate_payment_approval para usar a mesma helper
+----           - Files Modified: /app/backend/server.py (linhas ~960-1020, ~639-650, ~743-778, ~704-708)
+----           - Needs Testing: Simular webhook do Mercado Pago ou usar endpoint /api/simulate-approval/{order_id}
+----+      - working: true
+----+        agent: "testing"
+----+        comment: |
+----+          ✅ CRITICAL FIX VERIFICATION SUCCESSFUL:
+----+          - Comprehensive testing completed with 12/12 tests passed
+----+          - ✅ send_payment_approved_notifications function exists and has correct signature
+----+          - ✅ Payment simulation endpoint working correctly (/api/payments/{id}/simulate-approval)
+----+          - ✅ Order status correctly updated to paid/processing after payment approval
+----+          - ✅ Manual payment status check endpoint functional (/api/payments/{id}/status)
+----+          - ✅ Webhook endpoint accessible and processing requests correctly
+----+          - ✅ WhatsApp notifications triggered for both admin and client (logs show attempts)
+----+          - ✅ Admin notification includes custom fields (MAC, OTP) from order
+----+          - ✅ Status change detection working (old_status != "approved" check)
+----+          - ✅ All refactored functions (check_payment_status, simulate_payment_approval) use helper
+----+          - Note: WhatsApp service not connected in test environment (expected behavior)
+----+          - Backend logs confirm notification attempts: "⚠️ Falha ao enviar WhatsApp... WhatsApp não está conectado"
+---- 
+---- frontend:
+----   - task: "Auto-refresh Orders Screens (Admin & Client)"
+----@@ -279,7 +295,6 @@ metadata:
+---- 
+---- test_plan:
+----   current_focus:
+-----    - "Payment Webhook Notifications"
+----     - "Auto-refresh Orders Screens (Admin & Client)"
+----   stuck_tasks:
+----     - "Mercado Pago Payment Integration"
+----@@ -310,4 +325,28 @@ agent_communication:
+----       
+----       Credenciais para teste:
+----       - Admin: CPF 99064820104, Senha 152316
+-----      - User: (já existe no banco)
+----\ No newline at end of file
+----+      - User: (já existe no banco)
+----+  
+----+  - agent: "testing"
+----+    message: |
+----+      🎉 CRITICAL PAYMENT NOTIFICATION FIX - TESTING COMPLETED SUCCESSFULLY:
+----+      
+----+      ✅ COMPREHENSIVE VERIFICATION (12/12 tests passed):
+----+      - Payment notification system fully functional
+----+      - send_payment_approved_notifications() function working correctly
+----+      - Webhook integration processing payment status changes
+----+      - Order status updates working (pending → paid/processing)
+----+      - Custom fields (MAC, OTP) included in admin notifications
+----+      - Both admin and client notifications triggered
+----+      
+----+      ✅ BACKEND LOGS CONFIRM:
+----+      - "⚠️ Falha ao enviar WhatsApp para 556195021362" (admin notification attempt)
+----+      - "⚠️ Falha ao enviar WhatsApp para 5561987654322" (client notification attempt)
+----+      - WhatsApp service not connected (expected in test environment)
+----+      
+----+      ✅ ALL ENDPOINTS TESTED:
+----+      - /api/payments/{id}/simulate-approval ✅
+----+      - /api/payments/{id}/status ✅
+----+      - /api/payments/webhook ✅
+----+      
+----+      🚀 READY FOR PRODUCTION: The critical payment notification fix is working perfectly!
+----\ No newline at end of file
