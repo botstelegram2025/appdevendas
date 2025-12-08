@@ -863,21 +863,36 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
 WHATSAPP_SERVICE_URL = "http://localhost:3001"
 ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP", "5561981447719")  # Número do admin para receber notificações
 
+# Helper function to normalize Brazilian phone numbers
+def normalize_phone_number(phone: str) -> str:
+    """Normalize Brazilian phone number to include country code 55"""
+    # Remove any non-digit characters
+    clean_phone = ''.join(filter(str.isdigit, phone))
+    
+    # If doesn't start with 55, add it (Brazilian country code)
+    if not clean_phone.startswith('55'):
+        clean_phone = '55' + clean_phone
+    
+    return clean_phone
+
 # Helper function to send WhatsApp notifications
 async def send_whatsapp_notification(number: str, message: str):
     """Helper function to send WhatsApp notification"""
     try:
+        # Normalize phone number
+        normalized_number = normalize_phone_number(number)
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{WHATSAPP_SERVICE_URL}/send",
-                json={"number": number, "message": message},
+                json={"number": normalized_number, "message": message},
                 timeout=10.0
             )
             if response.status_code == 200:
-                print(f"✅ WhatsApp enviado para {number}")
+                print(f"✅ WhatsApp enviado para {normalized_number}")
                 return True
             else:
-                print(f"⚠️ Falha ao enviar WhatsApp para {number}: {response.text}")
+                print(f"⚠️ Falha ao enviar WhatsApp para {normalized_number}: {response.text}")
                 return False
     except Exception as e:
         print(f"❌ Erro ao enviar WhatsApp para {number}: {str(e)}")
