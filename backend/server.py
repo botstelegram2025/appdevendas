@@ -980,6 +980,51 @@ async def send_whatsapp_notification(number: str, message: str):
         print(f"❌ Erro ao enviar WhatsApp para {number}: {str(e)}")
         return False
 
+# Helper function to send payment approved notifications
+async def send_payment_approved_notifications(order: dict, user: dict):
+    """Send WhatsApp notifications to admin and customer when payment is approved"""
+    order_id_short = str(order["_id"])[:8]
+    
+    # Build custom fields info for admin notification
+    custom_fields_text = ""
+    for item in order.get("items", []):
+        product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+        if product and item.get("fields_data"):
+            custom_fields_text += f"\n\n📦 *{product['name']}* (x{item['quantity']})\n"
+            for field_name, field_value in item["fields_data"].items():
+                custom_fields_text += f"  • {field_name}: {field_value}\n"
+    
+    # Notify admin with custom fields
+    admin_message = f"""✅ *PAGAMENTO APROVADO - MARKIMAGEM TV*
+
+📦 Pedido: #{order_id_short}
+👤 Cliente: {user['name']}
+📞 Telefone: {user.get('phone', 'N/A')}
+💰 Valor: R$ {order['final_total']:.2f}
+
+✅ Pagamento confirmado!
+📤 Preparar entrega{custom_fields_text}"""
+    
+    await send_whatsapp_notification(ADMIN_WHATSAPP_NUMBER, admin_message)
+    
+    # Notify customer
+    if user.get('phone'):
+        customer_message = f"""✅ *Pagamento Aprovado - MARKIMAGEM TV*
+
+Olá {user['name']}! 
+
+Seu pagamento foi confirmado! 💰
+
+📦 Pedido: #{order_id_short}
+💵 Valor: R$ {order['final_total']:.2f}
+
+🚀 Estamos preparando sua entrega.
+Em breve você receberá os dados dos produtos.
+
+Obrigado pela preferência! 🙏"""
+        
+        await send_whatsapp_notification(user['phone'], customer_message)
+
 # WhatsApp Service Proxy Routes
 
 @app.get("/api/whatsapp/status")
