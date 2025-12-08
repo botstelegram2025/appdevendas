@@ -182,9 +182,10 @@ export default function WhatsAppConfig() {
           <View style={styles.qrSection}>
             <Text style={styles.sectionTitle}>Escaneie com seu WhatsApp</Text>
             <View style={styles.qrContainer}>
-              <QRCode
-                value={qrCode}
-                size={250}
+              <Image
+                source={{ uri: qrCode }}
+                style={{ width: 300, height: 300 }}
+                resizeMode="contain"
               />
             </View>
             <View style={styles.instructionsBox}>
