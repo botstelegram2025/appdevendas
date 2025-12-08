@@ -22,21 +22,26 @@ MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 ADMIN_CPF = "99064820104"
 ADMIN_PASSWORD = "152316"
 
-class PaymentNotificationTester:
+class BackendTester:
     def __init__(self):
         self.session = requests.Session()
-        self.user_token = None
         self.admin_token = None
+        self.user_token = None
         self.test_user_id = None
-        self.test_category_id = None
-        self.test_product_id = None
         self.test_order_id = None
         self.test_payment_id = None
-        self.results = {
-            'passed': 0,
-            'failed': 0,
-            'errors': []
-        }
+        
+        # MongoDB connection
+        try:
+            self.mongo_client = MongoClient(MONGO_URL)
+            self.db = self.mongo_client["digital_sales_app"]
+            self.users_collection = self.db["users"]
+            self.orders_collection = self.db["orders"]
+            self.payments_collection = self.db["payments"]
+            print("✅ MongoDB connection established")
+        except Exception as e:
+            print(f"❌ MongoDB connection failed: {e}")
+            self.mongo_client = None
     
     def log_result(self, test_name, success, message="", response=None):
         """Log test results"""
