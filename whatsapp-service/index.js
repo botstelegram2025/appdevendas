@@ -202,28 +202,32 @@ app.post('/logout', async (req, res) => {
         
         // Disconnect socket if connected
         if (sock) {
-            await sock.logout();
+            try {
+                await sock.logout();
+            } catch (err) {
+                console.log('⚠️ Erro ao fazer logout do socket:', err.message);
+            }
         }
         
         // Clear auth folder
-        const authPath = path.join(__dirname, 'auth_info');
-        if (fs.existsSync(authPath)) {
-            fs.rmSync(authPath, { recursive: true, force: true });
-            console.log('✅ Credenciais removidas');
-        }
+        clearOldSessions();
         
         // Reset state
         isConnected = false;
         qrCodeData = null;
         sock = null;
+        reconnectAttempts = 0;
+        isReconnecting = false;
         
-        // Reconnect to generate new QR
-        console.log('🔄 Reconectando para gerar novo QR Code...');
-        setTimeout(() => connectToWhatsApp(), 2000);
+        // Reconnect to generate new QR after a longer delay
+        console.log('🔄 Aguardando 5 segundos para gerar novo QR Code...');
+        setTimeout(() => {
+            connectToWhatsApp();
+        }, 5000);
         
         res.json({ 
             success: true, 
-            message: 'Desconectado. Novo QR Code será gerado em instantes.' 
+            message: 'Desconectado. Novo QR Code será gerado em 5 segundos.' 
         });
     } catch (error) {
         console.error('Erro ao desconectar:', error);
