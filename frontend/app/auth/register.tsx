@@ -89,8 +89,15 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // Remove formatação antes de enviar
-      const cleanPhone = phone.replace(/\D/g, '');
+      // Remove formatação e processa o número
+      let cleanPhone = phone.replace(/\D/g, '');
+      
+      // Se tem 13 dígitos (55 + DDD + 9 + 8 dígitos), remove o 9 do meio
+      if (cleanPhone.length === 13 && cleanPhone[4] === '9') {
+        // +55 61 9 8765-4321 → 556187654321
+        cleanPhone = cleanPhone.slice(0, 4) + cleanPhone.slice(5);
+      }
+      
       await register(name, cleanPhone, cpf, email, password);
       // Use setTimeout to ensure state is updated before navigation
       setTimeout(() => {
