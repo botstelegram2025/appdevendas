@@ -73,6 +73,40 @@ export default function WhatsAppConfig() {
     }
   };
 
+  const disconnectWhatsApp = async () => {
+    Alert.alert(
+      'Desconectar WhatsApp',
+      'Isso irá desconectar o WhatsApp e gerar um novo QR Code. Deseja continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desconectar',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await axios.post(
+                `${BACKEND_URL}/api/whatsapp/logout`,
+                {},
+                {
+                  headers: {
+                    'Authorization': `Bearer ${adminToken}`
+                  }
+                }
+              );
+              Alert.alert('Sucesso', 'WhatsApp desconectado! Novo QR Code será gerado.');
+              setTimeout(checkStatus, 3000);
+            } catch (error: any) {
+              Alert.alert('Erro', error.response?.data?.detail || 'Erro ao desconectar');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
