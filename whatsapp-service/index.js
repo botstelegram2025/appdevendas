@@ -11,6 +11,20 @@ let sock = null;
 let isConnected = false;
 let qrCodeData = null;
 
+// Função para limpar sessões antigas
+function clearOldSessions() {
+    const authPath = path.join(__dirname, 'auth_info');
+    try {
+        if (fs.existsSync(authPath)) {
+            console.log('🧹 Limpando sessões antigas do WhatsApp...');
+            fs.rmSync(authPath, { recursive: true, force: true });
+            console.log('✅ Sessões antigas removidas');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao limpar sessões:', error);
+    }
+}
+
 // Função para inicializar o WhatsApp
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
