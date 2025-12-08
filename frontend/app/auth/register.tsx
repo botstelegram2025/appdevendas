@@ -14,9 +14,62 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const formatPhone = (text: string) => {
+    // Remove tudo que não é número
+    const numbers = text.replace(/\D/g, '');
+    
+    // Limita a 11 dígitos (DDD + 9 dígitos)
+    const limited = numbers.slice(0, 11);
+    
+    // Aplica a máscara (XX) XXXXX-XXXX
+    if (limited.length <= 2) {
+      return limited;
+    } else if (limited.length <= 7) {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+    } else {
+      return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+    }
+  };
+
+  const handlePhoneChange = (text: string) => {
+    const formatted = formatPhone(text);
+    setPhone(formatted);
+  };
+
+  const validatePhone = (phone: string): boolean => {
+    // Remove formatação
+    const numbers = phone.replace(/\D/g, '');
+    
+    // Deve ter 11 dígitos (DDD + 9 dígitos)
+    if (numbers.length !== 11) {
+      return false;
+    }
+    
+    // DDD deve ser válido (10-99)
+    const ddd = parseInt(numbers.slice(0, 2));
+    if (ddd < 11 || ddd > 99) {
+      return false;
+    }
+    
+    // Primeiro dígito do número deve ser 9 (celular)
+    if (numbers[2] !== '9') {
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleRegister = async () => {
     if (!name || !phone || !cpf || !password) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (!validatePhone(phone)) {
+      Alert.alert(
+        'Telefone Inválido',
+        'Digite um número de celular válido com DDD.\nExemplo: (61) 98765-4321\n\n⚠️ Apenas números de celular (que começam com 9) são aceitos para receber notificações via WhatsApp.'
+      );
       return;
     }
 
@@ -27,7 +80,9 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(name, phone, cpf, email, password);
+      // Remove formatação antes de enviar
+      const cleanPhone = phone.replace(/\D/g, '');
+      await register(name, cleanPhone, cpf, email, password);
       // Use setTimeout to ensure state is updated before navigation
       setTimeout(() => {
         router.replace('/(tabs)');
