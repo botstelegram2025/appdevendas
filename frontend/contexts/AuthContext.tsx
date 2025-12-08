@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { BACKEND_URL } from '../config';
+import { AppState, AppStateStatus } from 'react-native';
 
 interface User {
   id: string;
@@ -15,22 +16,44 @@ interface AuthContextType {
   token: string | null;
   isAdmin: boolean;
   loading: boolean;
+  adminToken: string | null;
   login: (identifier: string, password: string) => Promise<void>;
   register: (name: string, phone: string, cpf: string, email: string, password: string) => Promise<void>;
   adminLogin: (cpf: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateActivity: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Constante para timeout de inatividade (5 minutos em ms)
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutos
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  const lastActivityRef = useRef<number>(Date.now());
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     loadStoredAuth();
+    
+    // Configurar listener para mudanças de estado do app
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    // Iniciar timer de inatividade
+    startInactivityTimer();
+    
+    return () => {
+      subscription.remove();
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+      }
+    };
   }, []);
 
   const loadStoredAuth = async () => {
