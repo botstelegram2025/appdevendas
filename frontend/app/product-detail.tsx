@@ -120,12 +120,20 @@ export default function ProductDetail() {
       subtotal: calculateTotal()
     });
     
+    // Show success alert with options
     Alert.alert(
-      'Sucesso',
-      'Produto adicionado ao carrinho!',
+      '✅ Produto Adicionado!',
+      `${product.name} foi adicionado ao seu carrinho.`,
       [
-        { text: 'Continuar Comprando', onPress: () => router.back() },
-        { text: 'Ver Carrinho', onPress: () => router.push('/(tabs)/cart') }
+        { 
+          text: 'Continuar Comprando', 
+          style: 'cancel',
+          onPress: () => router.back() 
+        },
+        { 
+          text: '🛒 Ver Carrinho', 
+          onPress: () => router.push('/(tabs)/cart') 
+        }
       ]
     );
   };
