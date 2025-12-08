@@ -295,7 +295,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Payment Webhook Notifications"
     - "Auto-refresh Orders Screens (Admin & Client)"
   stuck_tasks:
     - "Mercado Pago Payment Integration"
