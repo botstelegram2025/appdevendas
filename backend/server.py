@@ -139,9 +139,12 @@ async def register(user: UserRegister):
     if users_collection.find_one({"$or": [{"cpf": user.cpf}, {"phone": user.phone}]}):
         raise HTTPException(status_code=400, detail="User already exists")
     
+    # Normalizar telefone para garantir que começa com 55
+    normalized_phone = normalize_phone_number(user.phone)
+    
     user_doc = {
         "name": user.name,
-        "phone": user.phone,
+        "phone": normalized_phone,
         "cpf": user.cpf,
         "email": user.email,
         "password_hash": hash_password(user.password),
