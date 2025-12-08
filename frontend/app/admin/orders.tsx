@@ -27,6 +27,7 @@ interface Order {
 
 export default function OrdersManagement() {
   const router = useRouter();
+  const { adminToken } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -41,9 +42,14 @@ export default function OrdersManagement() {
       const url = filter === 'all' 
         ? `${BACKEND_URL}/api/admin/orders`
         : `${BACKEND_URL}/api/admin/orders?status=${filter}`;
-      const response = await axios.get(url);
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`
+        }
+      });
       setOrders(response.data);
     } catch (error) {
+      console.error('Error loading orders:', error);
       Alert.alert('Erro', 'Não foi possível carregar os pedidos');
     } finally {
       setLoading(false);
@@ -53,19 +59,29 @@ export default function OrdersManagement() {
   const handleDeliver = async (orderId: string) => {
     Alert.alert(
       'Confirmar Entrega',
-      'Deseja marcar este pedido como entregue?',
+      'Deseja marcar este pedido como entregue? O cliente receberá uma notificação WhatsApp.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Confirmar',
           onPress: async () => {
             try {
-              await axios.put(`${BACKEND_URL}/api/admin/orders/${orderId}/deliver`);
-              Alert.alert('Sucesso', 'Pedido marcado como entregue!');
+              await axios.put(
+                `${BACKEND_URL}/api/admin/orders/${orderId}/deliver`,
+                {},
+                {
+                  headers: {
+                    'Authorization': `Bearer ${adminToken}`
+                  }
+                }
+              );
+              Alert.alert('Sucesso', 'Pedido marcado como entregue! Notificação enviada ao cliente.');
               loadOrders();
               setSelectedOrder(null);
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível atualizar o pedido');
+            } catch (error: any) {
+              console.error('Error delivering order:', error);
+              const errorMsg = error.response?.data?.detail || 'Não foi possível atualizar o pedido';
+              Alert.alert('Erro', errorMsg);
             }
           }
         }
