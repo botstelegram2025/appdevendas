@@ -329,7 +329,26 @@ async def create_order(order: OrderCreate, current_user: Dict = Depends(get_curr
     
     result = orders_collection.insert_one(order_doc)
     order_doc["id"] = str(result.inserted_id)
+    order_id_short = str(result.inserted_id)[:8]
     del order_doc["_id"]
+    
+    # Get user info for notification
+    user = users_collection.find_one({"_id": ObjectId(current_user["user_id"])})
+    
+    # Send WhatsApp notification to admin
+    if user:
+        admin_message = f"""🔔 *NOVO PEDIDO - MARKIMAGEM TV*
+
+📦 Pedido: #{order_id_short}
+👤 Cliente: {user['name']}
+📱 Telefone: {user['phone']}
+💰 Valor: R$ {order_doc['final_total']:.2f}
+
+🛒 Itens: {len(order_doc['items'])} produto(s)
+
+⏳ Status: Aguardando pagamento"""
+        
+        await send_whatsapp_notification(ADMIN_WHATSAPP_NUMBER, admin_message)
     
     return order_doc
 
