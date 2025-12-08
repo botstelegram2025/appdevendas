@@ -236,6 +236,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000'
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -252,5 +257,94 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 8
+  },
+  scrollView: {
+    flex: 1
+  },
+  orderCard: {
+    backgroundColor: '#fff',
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  orderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0'
+  },
+  orderId: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000'
+  },
+  orderDate: {
+    fontSize: 13,
+    color: '#666'
+  },
+  orderDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  orderLabel: {
+    fontSize: 14,
+    color: '#666'
+  },
+  orderTotal: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF'
+  },
+  statusContainer: {
+    marginTop: 8
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  statusLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    marginRight: 8,
+    width: 80
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flex: 1
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center'
+  },
+  updateButton: {
+    marginTop: 12,
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8
+  },
+  updateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600'
   }
 });
