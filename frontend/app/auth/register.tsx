@@ -76,8 +76,8 @@ export default function Register() {
 
     if (!validatePhone(phone)) {
       Alert.alert(
-        'Telefone Inválido',
-        'Digite um número de celular válido com DDD.\nExemplo: (61) 98765-4321\n\n⚠️ Apenas números de celular (que começam com 9) são aceitos para receber notificações via WhatsApp.'
+        'WhatsApp Inválido',
+        'Digite o número completo no formato internacional.\n\n✅ Formato correto:\n+55 (61) 98765-4321\n\n• +55 = Código do Brasil\n• (61) = DDD\n• 9XXXX-XXXX = Número do celular\n\n⚠️ Necessário para receber notificações'
       );
       return;
     }
