@@ -129,6 +129,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(newUser);
       setIsAdmin(false);
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+      
+      // Resetar timestamp de atividade no login
+      updateActivity();
     } catch (error: any) {
       throw new Error(error.response?.data?.detail || 'Erro ao fazer login');
     }
