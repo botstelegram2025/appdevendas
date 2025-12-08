@@ -38,21 +38,32 @@ async function connectToWhatsApp() {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr) {
-            console.log('QR Code gerado!');
+            console.log('📱 QR Code gerado!');
             qrCodeData = qr;
         }
         
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Conexão fechada. Reconectando:', shouldReconnect);
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            
+            console.log('❌ Conexão fechada.');
+            console.log('📊 Status Code:', statusCode);
+            console.log('🔄 Deve reconectar:', shouldReconnect);
+            
             isConnected = false;
             qrCodeData = null;
             
-            if (shouldReconnect) {
-                setTimeout(() => connectToWhatsApp(), 3000);
-            } else {
-                console.log('❌ Desconectado pelo usuário. Use /logout para limpar e reconectar.');
-            }
+            // Limpar sessão antiga e gerar novo QR Code
+            console.log('🧹 Limpando sessão antiga...');
+            clearOldSessions();
+            
+            // Sempre reconectar para gerar novo QR Code
+            console.log('🔄 Reconectando para gerar novo QR Code...');
+            setTimeout(() => {
+                sock = null; // Reset socket
+                connectToWhatsApp();
+            }, 2000);
+            
         } else if (connection === 'open') {
             console.log('✅ WhatsApp conectado com sucesso!');
             isConnected = true;
