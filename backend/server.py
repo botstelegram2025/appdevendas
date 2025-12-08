@@ -197,6 +197,40 @@ async def get_me(current_user: Dict = Depends(get_current_user)):
         "email": user.get("email")
     }
 
+@app.put("/api/auth/profile")
+async def update_profile(
+    name: Optional[str] = None,
+    phone: Optional[str] = None,
+    email: Optional[str] = None,
+    current_user: Dict = Depends(get_current_user)
+):
+    user_id = current_user["user_id"]
+    update_data = {}
+    
+    if name:
+        update_data["name"] = name
+    if phone:
+        update_data["phone"] = normalize_phone_number(phone)
+    if email:
+        update_data["email"] = email
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    users_collection.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": update_data}
+    )
+    
+    updated_user = users_collection.find_one({"_id": ObjectId(user_id)})
+    
+    return {
+        "id": str(updated_user["_id"]),
+        "name": updated_user["name"],
+        "phone": updated_user["phone"],
+        "email": updated_user.get("email")
+    }
+
 # Admin Auth
 @app.post("/api/admin/login")
 async def admin_login(credentials: AdminLogin):
