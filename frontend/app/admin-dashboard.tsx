@@ -169,6 +169,17 @@ export default function AdminDashboard() {
             <Ionicons name="chevron-forward" size={24} color="#CCC" />
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuCard} onPress={() => router.push('/admin/whatsapp-config')}>
+            <View style={[styles.menuIcon, { backgroundColor: '#25D36620' }]}>
+              <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>WhatsApp</Text>
+              <Text style={styles.menuSubtitle}>Configurar notificações automáticas</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#CCC" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuCard}>
             <View style={[styles.menuIcon, { backgroundColor: '#AF52DE20' }]}>
               <Ionicons name="bar-chart" size={24} color="#AF52DE" />
