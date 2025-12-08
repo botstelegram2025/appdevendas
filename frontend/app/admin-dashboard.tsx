@@ -136,7 +136,7 @@ export default function AdminDashboard() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Gerenciar</Text>
           
-          <TouchableOpacity style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuCard} onPress={() => router.push('/admin/categories')}>
             <View style={[styles.menuIcon, { backgroundColor: '#007AFF20' }]}>
               <Ionicons name="grid" size={24} color="#007AFF" />
             </View>
@@ -147,7 +147,7 @@ export default function AdminDashboard() {
             <Ionicons name="chevron-forward" size={24} color="#CCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuCard} onPress={() => router.push('/admin/products')}>
             <View style={[styles.menuIcon, { backgroundColor: '#34C75920' }]}>
               <Ionicons name="cube" size={24} color="#34C759" />
             </View>
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
             <Ionicons name="chevron-forward" size={24} color="#CCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuCard} onPress={() => router.push('/admin/orders')}>
             <View style={[styles.menuIcon, { backgroundColor: '#FF950020' }]}>
               <Ionicons name="receipt" size={24} color="#FF9500" />
             </View>
