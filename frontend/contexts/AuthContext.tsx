@@ -56,6 +56,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Atualizar atividade do usuário
+  const updateActivity = () => {
+    lastActivityRef.current = Date.now();
+  };
+
+  // Verificar inatividade e fazer logout automático
+  const checkInactivity = () => {
+    const now = Date.now();
+    const timeSinceLastActivity = now - lastActivityRef.current;
+    
+    // Se usuário está logado (não é admin) e inativo por mais de 5 minutos
+    if (user && !isAdmin && token && timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+      console.log('🔒 Logout automático por inatividade');
+      logout();
+    }
+  };
+
+  // Iniciar timer de verificação de inatividade
+  const startInactivityTimer = () => {
+    // Verificar a cada 30 segundos
+    inactivityTimerRef.current = setInterval(() => {
+      checkInactivity();
+    }, 30000); // 30 segundos
+  };
+
+  // Gerenciar mudanças de estado do app (background/foreground)
+  const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+      // App voltou para foreground - verificar inatividade
+      checkInactivity();
+    }
+    appStateRef.current = nextAppState;
+    updateActivity();
+  };
+
   const loadStoredAuth = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('token');
@@ -67,6 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(JSON.parse(storedUser));
         setIsAdmin(storedIsAdmin === 'true');
         axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        // Atualizar timestamp de atividade ao carregar auth
+        updateActivity();
       }
     } catch (error) {
       console.error('Error loading auth:', error);
