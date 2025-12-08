@@ -233,6 +233,12 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16
   },
+  hint: {
+    fontSize: 12,
+    color: '#FF9500',
+    marginTop: 4,
+    fontWeight: '500'
+  },
   button: {
     backgroundColor: '#007AFF',
     padding: 16,
