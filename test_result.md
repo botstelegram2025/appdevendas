@@ -248,7 +248,28 @@ backend:
           - Needs Testing: Simular webhook do Mercado Pago ou usar endpoint /api/simulate-approval/{order_id}
 
 frontend:
-  # Frontend testing not performed as per instructions
+  - task: "Auto-refresh Orders Screens (Admin & Client)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/admin/orders.tsx, frontend/app/(tabs)/orders.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          🔧 CRITICAL FIX IMPLEMENTED:
+          - Issue: Telas de pedidos não atualizavam automaticamente com novos pedidos/status
+          - Root Cause: useEffect carregava dados só uma vez no mount, sem mecanismo de auto-refresh
+          - Solution:
+            1. Adicionado useFocusEffect em ambas as telas (admin/orders.tsx e (tabs)/orders.tsx)
+            2. Telas agora recarregam automaticamente quando usuário navega para elas
+            3. RefreshControl já existia para pull-to-refresh manual
+          - Files Modified: 
+            * /app/frontend/app/admin/orders.tsx (importado useFocusEffect, adicionado hook)
+            * /app/frontend/app/(tabs)/orders.tsx (importado useFocusEffect de @react-navigation/native, adicionado hook)
+          - Needs Testing: Navegar para telas de pedidos e verificar que lista atualiza automaticamente
 
 metadata:
   created_by: "testing_agent"
