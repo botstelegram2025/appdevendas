@@ -486,32 +486,6 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
     except Exception as e:
         print(f"Mercado Pago exception: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Payment processing error: {str(e)}")
-    
-    # Fallback: Create simulated PIX payment for testing
-    import uuid
-    simulated_payment_id = str(uuid.uuid4())
-    simulated_qr_code = f"00020126580014br.gov.bcb.pix0136{simulated_payment_id}520400005303986540{order['final_total']:.2f}5802BR5925LOJA DIGITAL6009SAO PAULO62070503***6304"
-    
-    # Save simulated payment
-    payment_doc = {
-        "order_id": payment_data.order_id,
-        "mercadopago_id": simulated_payment_id,
-        "payment_method": "pix",
-        "status": "pending",
-        "qr_code": simulated_qr_code,
-        "qr_code_base64": simulated_qr_code,  # In real scenario this would be base64 image
-        "simulated": True,
-        "created_at": datetime.utcnow()
-    }
-    payments_collection.insert_one(payment_doc)
-    
-    return {
-        "payment_id": simulated_payment_id,
-        "status": "pending",
-        "qr_code": simulated_qr_code,
-        "qr_code_base64": simulated_qr_code,
-        "simulated": True
-    }
 
 @app.get("/api/payments/{payment_id}/status")
 async def check_payment_status(payment_id: str, current_user: Dict = Depends(get_current_user)):
