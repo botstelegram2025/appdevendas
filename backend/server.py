@@ -75,6 +75,7 @@ class ProductCreate(BaseModel):
     required_fields: List[str] = []
     discount_rules: List[Dict[str, Any]] = []  # [{"min_quantity": 20, "discount_percent": 5}]
     active: bool = True
+    image: Optional[str] = None  # Base64 encoded image
 
 class OrderItem(BaseModel):
     product_id: str
