@@ -42,6 +42,13 @@ export default function OrdersManagement() {
     loadOrders();
   }, [filter]);
 
+  // Recarregar pedidos quando a tela recebe foco
+  useFocusEffect(
+    React.useCallback(() => {
+      loadOrders();
+    }, [filter])
+  );
+
   const loadOrders = async () => {
     try {
       const url = filter === 'all' 
