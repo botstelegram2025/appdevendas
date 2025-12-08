@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCartStore } from '../../stores/cartStore';
 
 export default function Cart() {
+  const router = useRouter();
   const { items, removeItem, clearCart, getTotal, getDiscount, getFinalTotal } = useCartStore();
 
   if (items.length === 0) {
