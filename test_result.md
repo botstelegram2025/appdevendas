@@ -263,6 +263,42 @@ backend:
           - Note: WhatsApp service not connected in test environment (expected behavior)
           - Backend logs confirm notification attempts: "⚠️ Falha ao enviar WhatsApp... WhatsApp não está conectado"
 
+  - task: "Phone Number Normalization for WhatsApp API"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py, frontend/app/auth/register.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          🔧 CRITICAL FIX IMPLEMENTED (P0):
+          - Issue: Notificações WhatsApp falham com erro "No LID for user" para alguns números
+          - Root Cause: API WAHA requer formato específico sem o 9º dígito (ex: 5561987654321 deve ser 556187654321)
+          - Solution:
+            1. FRONTEND (register.tsx linhas 96-99):
+               - Input com máscara +55 (XX) XXXXX-XXXX
+               - Remove o 9º dígito antes de enviar para backend (5561987654321 → 556187654321)
+               - Validação inclui instruções claras do formato correto
+            2. BACKEND (server.py linhas 943-959):
+               - Função normalize_phone_number() atualizada para remover 9º dígito
+               - Se número tem 13 dígitos (55 + DDD + 9 + 8 dígitos), remove o 9 após DDD
+               - Garante formato consistente: 12 dígitos (55 + DDD + 8 dígitos)
+            3. Aplicado em:
+               - Registro de usuário (/api/auth/register linha 149)
+               - Atualização de perfil (/api/auth/profile linha 219)
+               - Envio de notificações (send_whatsapp_notification linha 959)
+          - Files Modified: 
+            * /app/backend/server.py (função normalize_phone_number, linhas 943-959)
+            * /app/frontend/app/auth/register.tsx (validação e formatação, linhas 17-110)
+          - Expected Result: Números sempre salvos com 12 dígitos (ex: 556187654321), compatível com WAHA API
+          - Needs Testing: 
+            1. Registrar usuário com número +55 (61) 98765-4321
+            2. Verificar no MongoDB que foi salvo como 556187654321
+            3. Criar pedido e verificar se notificações funcionam sem erro "No LID"
+
 frontend:
   - task: "Auto-refresh Orders Screens (Admin & Client)"
     implemented: true
