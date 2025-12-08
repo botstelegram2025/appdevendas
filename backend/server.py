@@ -937,8 +937,7 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
     return result
 
 # WhatsApp Service Configuration
-WHATSAPP_SERVICE_URL = "http://localhost:3001"
-ADMIN_WHATSAPP_NUMBER = os.getenv("ADMIN_WHATSAPP", "5561981447719")  # Número do admin para receber notificações
+# WAHA WhatsApp helper function
 
 # Helper function to normalize Brazilian phone numbers
 def normalize_phone_number(phone: str) -> str:
