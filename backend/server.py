@@ -413,15 +413,18 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
     user = users_collection.find_one({"_id": ObjectId(current_user["user_id"])})
     
     # Try to create payment in Mercado Pago
+    # Clean CPF (remove formatting if any)
+    cpf_clean = ''.join(filter(str.isdigit, user["cpf"]))
+    
     mp_data = {
-        "transaction_amount": order["final_total"],
+        "transaction_amount": float(order["final_total"]),
         "description": f"Pedido #{payment_data.order_id[:8]}",
         "payment_method_id": "pix",
         "payer": {
             "email": payment_data.payer_email or user.get("email", "cliente@example.com"),
             "identification": {
                 "type": "CPF",
-                "number": user["cpf"]
+                "number": cpf_clean
             }
         }
     }
