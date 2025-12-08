@@ -1080,15 +1080,38 @@ class WhatsAppMessage(BaseModel):
 
 @app.post("/api/whatsapp/send")
 async def whatsapp_send(msg: WhatsAppMessage, current_user: Dict = Depends(get_admin_user)):
-    """Proxy to WhatsApp service send endpoint (admin only)"""
+    """Send WhatsApp message using WAHA API (admin only)"""
     try:
+        # Normalize phone number
+        normalized_number = normalize_phone_number(msg.number)
+        
+        # WAHA API endpoint
+        url = f"{WAHA_API_URL}/api/sendText"
+        
+        # WAHA API payload
+        payload = {
+            "session": WAHA_SESSION,
+            "chatId": f"{normalized_number}@c.us",
+            "text": msg.message
+        }
+        
+        headers = {
+            "X-Api-Key": WAHA_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{WHATSAPP_SERVICE_URL}/send",
-                json={"number": msg.number, "message": msg.message},
+                url,
+                json=payload,
+                headers=headers,
                 timeout=10.0
             )
-            return response.json()
+            
+            if response.status_code in [200, 201]:
+                return {"success": True, "message": "Mensagem enviada com sucesso"}
+            else:
+                return {"success": False, "error": f"Erro WAHA: {response.status_code} - {response.text}"}
     except Exception as e:
         print(f"WhatsApp send error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao enviar mensagem: {str(e)}")
