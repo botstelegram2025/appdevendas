@@ -18,7 +18,7 @@ load_dotenv('/app/frontend/.env')
 BACKEND_URL = os.getenv('EXPO_PUBLIC_BACKEND_URL', 'https://digimarket-24.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
-class DigitalSalesAPITester:
+class PaymentNotificationTester:
     def __init__(self):
         self.session = requests.Session()
         self.user_token = None
@@ -27,6 +27,7 @@ class DigitalSalesAPITester:
         self.test_category_id = None
         self.test_product_id = None
         self.test_order_id = None
+        self.test_payment_id = None
         self.results = {
             'passed': 0,
             'failed': 0,
