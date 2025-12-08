@@ -290,6 +290,23 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20
   },
+  disconnectButton: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFE0E0'
+  },
+  disconnectButtonText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '600'
+  },
   qrSection: {
     backgroundColor: '#fff',
     borderRadius: 12,
