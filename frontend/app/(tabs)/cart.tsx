@@ -80,7 +80,10 @@ export default function Cart() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.checkoutButton}>
+        <TouchableOpacity 
+          style={styles.checkoutButton}
+          onPress={() => router.push('/checkout')}
+        >
           <Text style={styles.checkoutButtonText}>Finalizar Compra</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
