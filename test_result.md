@@ -279,7 +279,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Mercado Pago Payment Integration"
+    - "Payment Webhook Notifications"
+    - "Auto-refresh Orders Screens (Admin & Client)"
   stuck_tasks:
     - "Mercado Pago Payment Integration"
   test_all: false
@@ -288,3 +289,25 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Comprehensive backend testing completed. 24/26 tests passed. All core functionality working correctly. Only payment integration failing due to Mercado Pago authorization (expected with test credentials). System is production-ready except for payment configuration."
+  
+  - agent: "main"
+    message: |
+      🚀 CORREÇÕES CRÍTICAS IMPLEMENTADAS:
+      
+      Issue #1 (P0): Cliente não recebe notificação quando pagamento aprovado via webhook
+      - Criada função send_payment_approved_notifications() que envia notificações para admin e cliente
+      - Webhook /api/payments/webhook agora detecta mudança de status e chama a notificação
+      - Notificação do admin agora inclui campos personalizados (MAC, OTP, etc.)
+      
+      Issue #2 (P0): Telas de pedidos não atualizam automaticamente
+      - Adicionado useFocusEffect em app/admin/orders.tsx e app/(tabs)/orders.tsx
+      - Telas agora recarregam dados automaticamente quando recebem foco
+      - RefreshControl mantido para pull-to-refresh manual
+      
+      PEDIDOS DE TESTE:
+      1. Backend: Testar endpoint de notificação via webhook simulado ou /api/simulate-approval/{order_id}
+      2. Frontend: NÃO TESTAR AINDA - aguardando confirmação do usuário
+      
+      Credenciais para teste:
+      - Admin: CPF 99064820104, Senha 152316
+      - User: (já existe no banco)
