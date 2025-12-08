@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function WhatsAppConfig() {
   const router = useRouter();
+  const { adminToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -24,12 +25,12 @@ export default function WhatsAppConfig() {
 
   const checkStatus = async () => {
     try {
-      const response = await axios.get(`${WHATSAPP_SERVICE_URL}/status`);
+      const response = await axios.get(`${BACKEND_URL}/api/whatsapp/status`);
       setIsConnected(response.data.connected);
       
       if (!response.data.connected && response.data.hasQR) {
         // Buscar QR Code
-        const qrResponse = await axios.get(`${WHATSAPP_SERVICE_URL}/qr`);
+        const qrResponse = await axios.get(`${BACKEND_URL}/api/whatsapp/qr`);
         if (qrResponse.data.qr) {
           setQrCode(qrResponse.data.qr);
         }
@@ -51,14 +52,22 @@ export default function WhatsAppConfig() {
 
     setSending(true);
     try {
-      await axios.post(`${WHATSAPP_SERVICE_URL}/send`, {
-        number: testNumber,
-        message: testMessage
-      });
+      await axios.post(
+        `${BACKEND_URL}/api/whatsapp/send`, 
+        {
+          number: testNumber,
+          message: testMessage
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }
+      );
       Alert.alert('Sucesso', 'Mensagem enviada!');
       setTestMessage('');
     } catch (error: any) {
-      Alert.alert('Erro', error.response?.data?.error || 'Erro ao enviar mensagem');
+      Alert.alert('Erro', error.response?.data?.detail || 'Erro ao enviar mensagem');
     } finally {
       setSending(false);
     }
