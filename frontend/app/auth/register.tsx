@@ -128,16 +128,16 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Celular com DDD (WhatsApp) *</Text>
+              <Text style={styles.label}>WhatsApp (Código do País + DDD + Número) *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="(61) 98765-4321"
+                placeholder="+55 (61) 98765-4321"
                 value={phone}
                 onChangeText={handlePhoneChange}
-                keyboardType="numeric"
-                maxLength={15}
+                keyboardType="phone-pad"
+                maxLength={19}
               />
-              <Text style={styles.hint}>⚠️ Apenas celular (começa com 9) para receber notificações</Text>
+              <Text style={styles.hint}>📱 Formato: +55 (DDD) 9XXXX-XXXX - Necessário para notificações</Text>
             </View>
 
             <View style={styles.inputContainer}>
