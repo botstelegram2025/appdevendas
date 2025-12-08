@@ -466,6 +466,16 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
             # Log detailed error
             print(f"Mercado Pago API Error: {response.status_code}")
             print(f"Error details: {response.text}")
+            
+            error_data = response.json() if response.text else {}
+            error_code = error_data.get("code", "")
+            
+            if error_code == "PA_UNAUTHORIZED_RESULT_FROM_POLICIES":
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Credenciais do Mercado Pago sem permissão para PIX. Por favor, ative o PIX na sua conta do Mercado Pago em: https://www.mercadopago.com.br/settings/release-options"
+                )
+            
             raise HTTPException(status_code=400, detail=f"Mercado Pago error: {response.text}")
     except HTTPException:
         raise
