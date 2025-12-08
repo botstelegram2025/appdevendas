@@ -76,6 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (name: string, phone: string, cpf: string, email: string, password: string) => {
     try {
+      console.log('Register - BACKEND_URL:', BACKEND_URL);
+      console.log('Register - Data:', { name, phone, cpf, email, password });
       const response = await axios.post(`${BACKEND_URL}/api/auth/register`, {
         name,
         phone,
@@ -83,6 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: email || undefined,
         password
       });
+      console.log('Register - Response:', response.data);
       
       const { token: newToken, user: newUser } = response.data;
       
