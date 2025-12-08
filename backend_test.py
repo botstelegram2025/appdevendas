@@ -93,9 +93,9 @@ class PaymentNotificationTester:
         try:
             user_data = {
                 "name": "João Silva Teste",
-                "phone": "5561987654321",
-                "cpf": "12345678901",
-                "email": "joao.teste@email.com",
+                "phone": "5561987654322",
+                "cpf": "98765432100",
+                "email": "joao.teste2@email.com",
                 "password": "senha123"
             }
             
