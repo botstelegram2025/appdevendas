@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Testing for Digital Sales Application
-Tests all authentication, CRUD operations, orders, payments, and dashboard endpoints
+Backend Test Suite for Digital Sales App - Payment Notifications Fix
+Testing the critical fix for payment approved notifications via webhook
 """
 
 import requests
