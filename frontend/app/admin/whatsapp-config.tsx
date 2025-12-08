@@ -201,6 +201,23 @@ export default function WhatsAppConfig() {
           </View>
         )}
 
+        {!isConnected && !qrCode && !loading && (
+          <View style={styles.startSessionContainer}>
+            <Ionicons name="qr-code-outline" size={64} color="#CCC" />
+            <Text style={styles.startSessionTitle}>Sessão não iniciada</Text>
+            <Text style={styles.startSessionText}>
+              Inicie uma nova sessão para gerar o QR Code e conectar seu WhatsApp
+            </Text>
+            <TouchableOpacity 
+              style={styles.startButton}
+              onPress={startSession}
+            >
+              <Ionicons name="play-circle" size={24} color="#fff" />
+              <Text style={styles.startButtonText}>Iniciar Sessão</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {!isConnected && !qrCode && loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
