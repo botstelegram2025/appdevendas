@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import httpx
 import hashlib
 import hmac
+import uuid
 
 load_dotenv()
 
