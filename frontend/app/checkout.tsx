@@ -84,19 +84,10 @@ export default function Checkout() {
 
         <ScrollView style={styles.content}>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Dados para Pagamento</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>E-mail *</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="seu@email.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <Text style={styles.hint}>Usado para confirmação do pagamento</Text>
-            </View>
+            <Text style={styles.sectionTitle}>Resumo da Compra</Text>
+            <Text style={styles.infoText}>
+              Confirme os itens do seu carrinho e finalize o pagamento via PIX
+            </Text>
           </View>
 
           <View style={styles.section}>
