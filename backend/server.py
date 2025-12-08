@@ -1022,51 +1022,20 @@ Obrigado pela preferência! 🙏"""
 @app.get("/api/whatsapp/status")
 async def get_whatsapp_status():
     try:
-        # WAHA usa /api/{session}/status ou /api/server/status
-        url = f"{WAHA_API_URL}/api/{WAHA_SESSION}/status"
-        headers = {"X-Api-Key": WAHA_API_KEY}
-        
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, timeout=5.0)
-            
-            if response.status_code == 200:
-                data = response.json()
-                # WAHA retorna { "state": "WORKING" } ou similar
-                return {
-                    "connected": data.get("state") == "WORKING",
-                    "hasQR": data.get("state") == "SCAN_QR_CODE",
-                    "status": data.get("state", "STOPPED")
-                }
-            else:
-                return {"connected": False, "status": "STOPPED", "hasQR": False}
+            response = await client.get(f"{WHATSAPP_SERVICE_URL}/status", timeout=5.0)
+            return response.json()
     except Exception as e:
-        return {"connected": False, "error": str(e), "status": "ERROR"}
+        return {"connected": False, "error": str(e)}
 
 @app.get("/api/whatsapp/qr")
 async def get_whatsapp_qr():
     try:
-        # WAHA usa /api/{session}/screenshot para obter QR Code
-        url = f"{WAHA_API_URL}/api/{WAHA_SESSION}/screenshot"
-        headers = {"X-Api-Key": WAHA_API_KEY}
-        
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=headers, timeout=5.0)
-            
-            if response.status_code == 200:
-                # WAHA retorna imagem diretamente ou JSON com base64
-                content_type = response.headers.get("content-type", "")
-                
-                if "image" in content_type:
-                    # Converte imagem para base64
-                    import base64
-                    img_base64 = base64.b64encode(response.content).decode('utf-8')
-                    return {"qr": f"data:image/png;base64,{img_base64}", "message": "QR Code disponível"}
-                else:
-                    return response.json()
-            else:
-                return {"error": "QR Code não disponível", "message": "Sessão não iniciada ou já conectada"}
+            response = await client.get(f"{WHATSAPP_SERVICE_URL}/qr", timeout=5.0)
+            return response.json()
     except Exception as e:
-        return {"error": str(e), "message": "Erro ao obter QR Code"}
+        return {"error": str(e)}
 
 class WhatsAppMessage(BaseModel):
     number: str
