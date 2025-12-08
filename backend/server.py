@@ -440,6 +440,14 @@ async def get_admin_order(order_id: str, current_user: Dict = Depends(get_admin_
         order["user_name"] = user["name"]
         order["user_phone"] = user["phone"]
         order["user_email"] = user.get("email")
+        order["user_cpf"] = user.get("cpf")
+    
+    # Add product names to items
+    for item in order.get("items", []):
+        product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+        if product:
+            item["product_name"] = product["name"]
+    
     del order["_id"]
     return order
 
