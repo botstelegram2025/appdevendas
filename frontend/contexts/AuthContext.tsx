@@ -201,10 +201,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setIsAdmin(false);
     delete axios.defaults.headers.common['Authorization'];
+    
+    // Limpar timer de inatividade
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAdmin, loading, login, register, adminLogin, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      isAdmin, 
+      loading, 
+      adminToken: isAdmin ? token : null,
+      login, 
+      register, 
+      adminLogin, 
+      logout,
+      updateActivity
+    }}>
       {children}
     </AuthContext.Provider>
   );
