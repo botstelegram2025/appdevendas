@@ -335,16 +335,37 @@ async def create_order(order: OrderCreate, current_user: Dict = Depends(get_curr
     # Get user info for notification
     user = users_collection.find_one({"_id": ObjectId(current_user["user_id"])})
     
-    # Send WhatsApp notification to admin
+    # Send WhatsApp notification to admin with ALL product details
     if user:
+        # Build detailed product list with custom fields
+        products_detail = []
+        for item in order_doc['items']:
+            product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+            if product:
+                product_line = f"• {product['name']} (x{item['quantity']}) - R$ {item['subtotal']:.2f}"
+                products_detail.append(product_line)
+                
+                # Add ALL custom fields if present
+                if item.get("fields_data"):
+                    for field_name, field_value in item["fields_data"].items():
+                        products_detail.append(f"  ↳ *{field_name}:* {field_value}")
+        
+        products_text = "\n".join(products_detail)
+        
         admin_message = f"""🔔 *NOVO PEDIDO - MARKIMAGEM TV*
 
 📦 Pedido: #{order_id_short}
-👤 Cliente: {user['name']}
-📱 Telefone: {user['phone']}
-💰 Valor: R$ {order_doc['final_total']:.2f}
 
-🛒 Itens: {len(order_doc['items'])} produto(s)
+👤 *Dados do Cliente:*
+   • Nome: {user['name']}
+   • Telefone: {user['phone']}
+   • Email: {user.get('email', 'N/A')}
+   • CPF: {user.get('cpf', 'N/A')}
+
+💰 *Valor Total:* R$ {order_doc['final_total']:.2f}
+
+📋 *Produtos e Dados:*
+{products_text}
 
 ⏳ Status: Aguardando pagamento"""
         
