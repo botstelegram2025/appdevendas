@@ -378,7 +378,13 @@ async def get_orders(current_user: Dict = Depends(get_current_user)):
     orders = list(orders_collection.find({"user_id": current_user["user_id"]}).sort("created_at", -1))
     for order in orders:
         order["id"] = str(order["_id"])
+        order_id = order["id"]
         del order["_id"]
+        
+        # Add payment_id if exists
+        payment = payments_collection.find_one({"order_id": order_id})
+        if payment:
+            order["payment_id"] = payment.get("mercadopago_id")
     return orders
 
 @app.get("/api/orders/{order_id}")
