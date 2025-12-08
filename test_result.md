@@ -225,6 +225,28 @@ backend:
         agent: "testing"
         comment: "❌ Payment creation fails with Mercado Pago authorization error (PA_UNAUTHORIZED_RESULT_FROM_POLICIES). This is expected with test credentials but indicates **mocked** payment integration needed for production"
 
+  - task: "Payment Webhook Notifications"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          🔧 CRITICAL FIX IMPLEMENTED:
+          - Issue: Cliente não recebe notificação quando pagamento aprovado via webhook
+          - Root Cause: O endpoint /api/payments/webhook atualizava o status mas não chamava a função de notificação
+          - Solution: 
+            1. Criada função helper send_payment_approved_notifications(order, user) que envia notificações WhatsApp para admin e cliente
+            2. Webhook agora verifica mudança de status (não-aprovado -> aprovado) e chama a função de notificação
+            3. Notificação do admin inclui campos personalizados do pedido (MAC, OTP, etc.)
+            4. Refatoradas funções check_payment_status e simulate_payment_approval para usar a mesma helper
+          - Files Modified: /app/backend/server.py (linhas ~960-1020, ~639-650, ~743-778, ~704-708)
+          - Needs Testing: Simular webhook do Mercado Pago ou usar endpoint /api/simulate-approval/{order_id}
+
 frontend:
   # Frontend testing not performed as per instructions
 
