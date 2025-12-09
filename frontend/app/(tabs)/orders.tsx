@@ -354,8 +354,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center'
   },
-  updateButton: {
+  buttonRow: {
+    flexDirection: 'row',
     marginTop: 12,
+    gap: 8
+  },
+  detailsButton: {
+    flex: 1,
+    backgroundColor: '#F0F8FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF'
+  },
+  detailsButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  updateButton: {
+    flex: 1,
     backgroundColor: '#007AFF',
     flexDirection: 'row',
     alignItems: 'center',
