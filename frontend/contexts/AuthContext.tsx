@@ -22,6 +22,7 @@ interface AuthContextType {
   adminLogin: (cpf: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateActivity: () => void;
+  updateUser: (userData: User) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
