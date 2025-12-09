@@ -40,16 +40,16 @@ export default function Checkout() {
       });
 
       // Navigate to payment screen with payment data
-      router.push({
-        pathname: '/payment-pix',
-        params: {
-          orderId: order.id,
-          paymentId: paymentResponse.data.payment_id,
-          qrCode: paymentResponse.data.qr_code,
-          qrCodeBase64: paymentResponse.data.qr_code_base64,
-          amount: getFinalTotal().toFixed(2)
-        }
+      // Usar template string para passar parâmetros pela URL
+      const params = new URLSearchParams({
+        orderId: order.id,
+        paymentId: paymentResponse.data.payment_id.toString(),
+        qrCode: paymentResponse.data.qr_code,
+        qrCodeBase64: paymentResponse.data.qr_code_base64,
+        amount: getFinalTotal().toFixed(2)
       });
+      
+      router.push(`/payment-pix?${params.toString()}`);
 
       // Clear cart after successful order creation
       clearCart();
