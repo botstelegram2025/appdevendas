@@ -594,6 +594,70 @@ Para dúvidas, entre em contato."""
     
     return {"message": "Order marked as delivered"}
 
+@app.post("/api/admin/orders/{order_id}/cancel")
+async def cancel_order(order_id: str, current_user: Dict = Depends(get_admin_user)):
+    """Cancelar pedido - pode ser cancelado em qualquer status"""
+    # Get order before updating
+    order = orders_collection.find_one({"_id": ObjectId(order_id)})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Check if already cancelled
+    if order.get("payment_status") == "cancelled":
+        raise HTTPException(status_code=400, detail="Order is already cancelled")
+    
+    # Update order status to cancelled
+    result = orders_collection.update_one(
+        {"_id": ObjectId(order_id)},
+        {"$set": {
+            "payment_status": "cancelled",
+            "delivery_status": "cancelled",
+            "cancelled_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Get user info for notification
+    user = users_collection.find_one({"_id": ObjectId(order["user_id"])})
+    
+    if user and user.get('phone'):
+        order_id_short = str(order["_id"])[:8]
+        
+        # Notify customer about cancellation
+        customer_message = f"""⚠️ *Pedido Cancelado - MARKIMAGEM TV*
+
+Olá {user['name']}!
+
+Seu pedido foi cancelado devido a informações inválidas nos dados fornecidos (MAC, OTP, etc).
+
+📦 Pedido: #{order_id_short}
+💵 Valor: R$ {order['final_total']:.2f}
+
+💰 *O valor será estornado* de acordo com as políticas do meio de pagamento utilizado.
+
+Se houver dúvidas, entre em contato conosco.
+
+Obrigado pela compreensão! 🙏"""
+        
+        await send_whatsapp_notification(user['phone'], customer_message)
+        
+        # Also notify admin
+        admin_message = f"""❌ *Pedido Cancelado*
+
+📦 Pedido #{order_id_short} foi cancelado
+👤 Cliente: {user['name']}
+📞 Telefone: {user.get('phone', 'N/A')}
+💵 Valor: R$ {order['final_total']:.2f}
+
+✅ Cliente notificado sobre o cancelamento e estorno."""
+        
+        await send_whatsapp_notification(ADMIN_WHATSAPP_NUMBER, admin_message)
+    
+    return {"message": "Order cancelled successfully"}
+
 # Payments Routes
 @app.post("/api/payments/create-pix")
 async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = Depends(get_current_user)):
