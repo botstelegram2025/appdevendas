@@ -165,21 +165,8 @@ export default function OrdersManagement() {
   };
 
   const handleCancelOrder = (order: Order) => {
-    Alert.alert(
-      'Cancelar Pedido',
-      'Tem certeza que deseja cancelar este pedido? O cliente será notificado sobre caracteres inválidos e o estorno.',
-      [
-        {
-          text: 'Não',
-          style: 'cancel'
-        },
-        {
-          text: 'Sim, Cancelar',
-          style: 'destructive',
-          onPress: () => cancelOrder(order.id)
-        }
-      ]
-    );
+    setOrderToCancel(order);
+    setShowCancelModal(true);
   };
 
   const cancelOrder = async (orderId: string) => {
