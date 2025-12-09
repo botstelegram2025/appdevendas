@@ -506,5 +506,69 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600'
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center'
+  },
+  modalIcon: {
+    marginBottom: 20
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%'
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    alignItems: 'center'
+  },
+  modalButtonSecondaryText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  modalButtonPrimaryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600'
   }
 });
