@@ -169,11 +169,15 @@ export default function OrdersManagement() {
     setShowCancelModal(true);
   };
 
-  const cancelOrder = async (orderId: string) => {
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+    
+    setShowCancelModal(false);
     setUpdatingStatus(true);
+    
     try {
       await axios.post(
-        `${BACKEND_URL}/api/admin/orders/${orderId}/cancel`,
+        `${BACKEND_URL}/api/admin/orders/${orderToCancel.id}/cancel`,
         {},
         {
           headers: {
@@ -184,6 +188,7 @@ export default function OrdersManagement() {
       Alert.alert('Sucesso', 'Pedido cancelado! Cliente notificado via WhatsApp.');
       loadOrders();
       setSelectedOrder(null);
+      setOrderToCancel(null);
     } catch (error: any) {
       console.error('Error cancelling order:', error);
       const errorMsg = error.response?.data?.detail || 'Não foi possível cancelar o pedido';
