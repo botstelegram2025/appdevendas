@@ -13,11 +13,9 @@ RUN yarn install --frozen-lockfile
 # Copiar código do frontend
 COPY frontend/ .
 
-# Expor porta
+# Expor porta (Railway usa variável $PORT dinamicamente)
 EXPOSE 3000
 
-# Variável de ambiente para o backend
-ENV EXPO_PUBLIC_BACKEND_URL=${EXPO_PUBLIC_BACKEND_URL}
-
 # Comando para iniciar o servidor web
-CMD ["yarn", "start", "--web", "--port", "3000"]
+# A variável EXPO_PUBLIC_BACKEND_URL será injetada em runtime pelo Railway
+CMD yarn start --web --port ${PORT:-3000}
