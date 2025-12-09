@@ -1283,6 +1283,107 @@ async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
         print(f"WhatsApp logout error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")
 
+# ============================================
+# SCHEDULED TASKS - Notificações Automáticas
+# ============================================
+
+def check_pending_deliveries():
+    """
+    Verifica pedidos pendentes de entrega e notifica o admin via WhatsApp.
+    Roda automaticamente a cada 30 minutos.
+    """
+    try:
+        print("🔍 Verificando pedidos pendentes de entrega...")
+        
+        # Buscar pedidos com pagamento aprovado mas ainda não entregues
+        pending_orders = list(orders_collection.find({
+            "payment_status": {"$in": ["paid", "approved"]},
+            "delivery_status": {"$ne": "delivered"}
+        }).sort("created_at", 1))
+        
+        # Se não houver pedidos pendentes, não enviar notificação
+        if len(pending_orders) == 0:
+            print("✅ Nenhum pedido pendente de entrega")
+            return
+        
+        print(f"📦 Encontrados {len(pending_orders)} pedidos pendentes")
+        
+        # Montar mensagem para o admin
+        message_lines = [
+            f"🔔 *ALERTA AUTOMÁTICO - Produtos Pendentes*",
+            f"",
+            f"Você tem *{len(pending_orders)}* pedido(s) aguardando entrega:",
+            f""
+        ]
+        
+        for order in pending_orders[:10]:  # Limitar a 10 pedidos na notificação
+            order_id_short = str(order["_id"])[:8]
+            
+            # Buscar informações do usuário
+            user = users_collection.find_one({"_id": ObjectId(order["user_id"])})
+            user_name = user.get("name", "N/A") if user else "N/A"
+            
+            # Calcular quanto tempo está pendente
+            created_at = order.get("created_at", datetime.utcnow())
+            hours_pending = int((datetime.utcnow() - created_at).total_seconds() / 3600)
+            
+            message_lines.append(
+                f"• Pedido #{order_id_short} - {user_name} - R$ {order['final_total']:.2f} ({hours_pending}h)"
+            )
+        
+        if len(pending_orders) > 10:
+            message_lines.append(f"... e mais {len(pending_orders) - 10} pedidos")
+        
+        message_lines.extend([
+            "",
+            "📱 Acesse o painel admin para processar as entregas."
+        ])
+        
+        admin_message = "\n".join(message_lines)
+        
+        # Enviar notificação para o admin (usando httpx de forma síncrona)
+        import httpx
+        
+        normalized_number = normalize_phone_number(ADMIN_WHATSAPP_NUMBER)
+        url = f"{WAHA_API_URL}/api/sendText"
+        payload = {
+            "session": WAHA_SESSION,
+            "chatId": f"{normalized_number}@c.us",
+            "text": admin_message
+        }
+        headers = {
+            "X-Api-Key": WAHA_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        with httpx.Client() as client:
+            response = client.post(url, json=payload, headers=headers, timeout=10.0)
+            if response.status_code in [200, 201]:
+                print(f"✅ Notificação enviada ao admin sobre {len(pending_orders)} pedidos pendentes")
+            else:
+                print(f"⚠️ Falha ao enviar notificação: {response.status_code} - {response.text}")
+    
+    except Exception as e:
+        print(f"❌ Erro ao verificar pedidos pendentes: {str(e)}")
+
+# Configurar o scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=check_pending_deliveries,
+    trigger="interval",
+    minutes=30,
+    id="check_pending_deliveries",
+    name="Verificar pedidos pendentes de entrega",
+    replace_existing=True
+)
+
+# Iniciar o scheduler
+scheduler.start()
+print("⏰ Scheduler iniciado - Verificações automáticas a cada 30 minutos")
+
+# Registrar shutdown do scheduler
+atexit.register(lambda: scheduler.shutdown())
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
