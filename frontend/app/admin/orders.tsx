@@ -416,6 +416,24 @@ export default function OrdersManagement() {
                 )}
               </TouchableOpacity>
             )}
+
+            {/* Botão de cancelar pedido */}
+            {selectedOrder.payment_status !== 'cancelled' && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelActionButton]}
+                onPress={() => handleCancelOrder(selectedOrder)}
+                disabled={updatingStatus}
+              >
+                {updatingStatus ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="close-circle" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Cancelar Pedido</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
