@@ -18,6 +18,7 @@ interface Order {
 }
 
 export default function Orders() {
+  const router = useRouter();
   const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
