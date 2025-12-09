@@ -1,20 +1,20 @@
-# Frontend Dockerfile para Railway
+# Dockerfile simplificado para Frontend no Railway
 FROM node:18-alpine
 
 # Definir diretório de trabalho
-WORKDIR /app
+WORKDIR /workspace
 
-# Copiar package files
-COPY frontend/package.json frontend/yarn.lock ./
+# Copiar TUDO do repositório primeiro
+COPY . .
+
+# Agora entrar na pasta frontend e trabalhar lá
+WORKDIR /workspace/frontend
 
 # Instalar dependências
 RUN yarn install --frozen-lockfile
-
-# Copiar código do frontend
-COPY frontend/ .
 
 # Expor porta
 EXPOSE 3000
 
 # Comando para iniciar o servidor web
-CMD ["yarn", "web"]
+CMD ["sh", "-c", "yarn start --web --port ${PORT:-3000}"]
