@@ -908,9 +908,9 @@ async def get_top_products(limit: int = 10, current_user: Dict = Depends(get_adm
     now = datetime.utcnow()
     current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    # Get all paid orders from current month
+    # Get all paid/approved orders from current month
     orders = list(orders_collection.find({
-        "payment_status": "paid",
+        "payment_status": {"$in": ["paid", "approved"]},
         "created_at": {"$gte": current_month_start}
     }))
     
@@ -944,9 +944,9 @@ async def get_sales_by_category(current_user: Dict = Depends(get_admin_user)):
     now = datetime.utcnow()
     current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    # Get all paid orders from current month
+    # Get all paid/approved orders from current month
     orders = list(orders_collection.find({
-        "payment_status": "paid",
+        "payment_status": {"$in": ["paid", "approved"]},
         "created_at": {"$gte": current_month_start}
     }))
     
