@@ -39,8 +39,7 @@ export default function Checkout() {
         payer_email: user?.email || 'cliente@markimagemtv.com'
       });
 
-      // Navigate to payment screen with payment data
-      // Usar template string para passar parâmetros pela URL
+      // Prepare payment URL
       const params = new URLSearchParams({
         orderId: order.id,
         paymentId: paymentResponse.data.payment_id.toString(),
@@ -49,10 +48,23 @@ export default function Checkout() {
         amount: getFinalTotal().toFixed(2)
       });
       
-      router.push(`/payment-pix?${params.toString()}`);
+      const paymentUrl = `/payment-pix?${params.toString()}`;
 
       // Clear cart after successful order creation
       clearCart();
+
+      // Show success dialog and navigate
+      Alert.alert(
+        '✅ Pagamento PIX Gerado!',
+        'Seu pedido foi criado com sucesso. Você será redirecionado para a tela de pagamento.',
+        [
+          {
+            text: 'Ver QR Code PIX',
+            onPress: () => router.push(paymentUrl)
+          }
+        ],
+        { cancelable: false }
+      );
     } catch (error: any) {
       console.error('Checkout error:', error);
       Alert.alert(
