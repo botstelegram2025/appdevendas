@@ -889,7 +889,7 @@ async def get_monthly_revenue(months: int = 6, current_user: Dict = Depends(get_
             month_end = datetime(year, month + 1, 1)
         
         orders = list(orders_collection.find({
-            "payment_status": "paid",
+            "payment_status": {"$in": ["paid", "approved"]},
             "created_at": {"$gte": month_start, "$lt": month_end}
         }))
         
