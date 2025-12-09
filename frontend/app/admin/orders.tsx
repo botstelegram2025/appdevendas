@@ -828,24 +828,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600'
-  },
-  orderCardTouchable: {
-    flex: 1
-  },
-  cancelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    marginTop: 8
-  },
-  cancelButtonText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    fontWeight: '600'
   }
 });
