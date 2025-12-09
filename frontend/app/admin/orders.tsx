@@ -162,6 +162,48 @@ export default function OrdersManagement() {
     Alert.alert('Alterar Status de Entrega', 'Escolha o novo status:', options);
   };
 
+  const handleCancelOrder = (order: Order) => {
+    Alert.alert(
+      'Cancelar Pedido',
+      'Tem certeza que deseja cancelar este pedido? O cliente será notificado sobre caracteres inválidos e o estorno.',
+      [
+        {
+          text: 'Não',
+          style: 'cancel'
+        },
+        {
+          text: 'Sim, Cancelar',
+          style: 'destructive',
+          onPress: () => cancelOrder(order.id)
+        }
+      ]
+    );
+  };
+
+  const cancelOrder = async (orderId: string) => {
+    setUpdatingStatus(true);
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/admin/orders/${orderId}/cancel`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }
+      );
+      Alert.alert('Sucesso', 'Pedido cancelado! Cliente notificado via WhatsApp.');
+      loadOrders();
+      setSelectedOrder(null);
+    } catch (error: any) {
+      console.error('Error cancelling order:', error);
+      const errorMsg = error.response?.data?.detail || 'Não foi possível cancelar o pedido';
+      Alert.alert('Erro', errorMsg);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
       'paid': '#34C759',
