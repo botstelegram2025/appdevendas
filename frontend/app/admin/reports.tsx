@@ -189,13 +189,13 @@ export default function ReportsScreen() {
                     <Text style={styles.rankText}>{index + 1}º</Text>
                   </View>
                   <View style={styles.productInfo}>
-                    <Text style={styles.productName}>{product.name}</Text>
+                    <Text style={styles.productName}>{product.product_name}</Text>
                     <Text style={styles.productStats}>
-                      {product.total_sold} vendas • {formatCurrency(product.total_revenue)}
+                      {product.quantity_sold} vendas • {formatCurrency(product.revenue)}
                     </Text>
                   </View>
                   <View style={styles.productRevenue}>
-                    <Text style={styles.revenueValue}>{formatCurrency(product.total_revenue)}</Text>
+                    <Text style={styles.revenueValue}>{formatCurrency(product.revenue)}</Text>
                   </View>
                 </View>
               ))}
