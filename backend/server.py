@@ -16,7 +16,11 @@ import uuid
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(
+    title="MARKIMAGEM TV API",
+    description="API para venda de produtos digitais (IPTV, ativações)",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,6 +29,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health check endpoint para Railway
+@app.get("/")
+async def root():
+    """
+    Health check endpoint
+    """
+    return {
+        "status": "online",
+        "service": "MARKIMAGEM TV API",
+        "version": "1.0.0",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/health",
+            "products": "/api/products",
+            "categories": "/api/categories"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check detalhado
+    """
+    try:
+        # Testar conexão com MongoDB
+        client.server_info()
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "database": db_status,
+        "timestamp": datetime.now().isoformat()
+    }
 
 # MongoDB connection
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
