@@ -50,23 +50,14 @@ export default function Checkout() {
         amount: getFinalTotal().toFixed(2)
       });
       
-      const paymentUrl = `/payment-pix?${params.toString()}`;
+      const finalPaymentUrl = `/payment-pix?${params.toString()}`;
 
       // Clear cart after successful order creation
       clearCart();
 
-      // Show success dialog and navigate
-      Alert.alert(
-        '✅ Pagamento PIX Gerado!',
-        'Seu pedido foi criado com sucesso. Você será redirecionado para a tela de pagamento.',
-        [
-          {
-            text: 'Ver QR Code PIX',
-            onPress: () => router.push(paymentUrl)
-          }
-        ],
-        { cancelable: false }
-      );
+      // Navigate DIRECTLY - mais confiável
+      console.log('Navegando para:', finalPaymentUrl);
+      router.push(finalPaymentUrl);
     } catch (error: any) {
       console.error('Checkout error:', error);
       Alert.alert(
