@@ -45,7 +45,10 @@ export default function Profile() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Configurações</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/edit-profile')}
+          >
             <Ionicons name="person-outline" size={24} color="#666" />
             <Text style={styles.menuItemText}>Editar Perfil</Text>
             <Ionicons name="chevron-forward" size={24} color="#CCC" />
