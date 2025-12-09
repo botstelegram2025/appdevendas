@@ -32,7 +32,7 @@ export default function ReportsScreen() {
         axios.get(`${BACKEND_URL}/api/admin/dashboard/stats`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get(`${BACKEND_URL}/api/admin/dashboard/revenue`, {
+        axios.get(`${BACKEND_URL}/api/admin/dashboard/monthly-revenue`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${BACKEND_URL}/api/admin/dashboard/top-products`, {
