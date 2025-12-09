@@ -210,6 +210,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUser = async (userData: User) => {
+    try {
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      updateActivity();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw new Error('Erro ao atualizar dados do usuário');
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -221,7 +232,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       register, 
       adminLogin, 
       logout,
-      updateActivity
+      updateActivity,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>
