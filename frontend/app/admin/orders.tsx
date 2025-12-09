@@ -491,57 +491,41 @@ export default function OrdersManagement() {
           </View>
         ) : (
           orders.map((order) => (
-            <View key={order.id} style={styles.orderCard}>
-              <TouchableOpacity
-                onPress={() => setSelectedOrder(order)}
-                style={styles.orderCardTouchable}
-              >
-                <View style={styles.orderHeader}>
-                  <Text style={styles.orderId}>#{order.id.substring(0, 8)}</Text>
-                  <Text style={styles.orderDate}>
-                    {new Date(order.created_at).toLocaleDateString('pt-BR')}
-                  </Text>
-                </View>
+            <TouchableOpacity
+              key={order.id}
+              style={styles.orderCard}
+              onPress={() => setSelectedOrder(order)}
+            >
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderId}>#{order.id.substring(0, 8)}</Text>
+                <Text style={styles.orderDate}>
+                  {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                </Text>
+              </View>
 
-                <View style={styles.orderInfo}>
-                  <View style={styles.orderInfoRow}>
-                    <Ionicons name="person-outline" size={16} color="#666" />
-                    <Text style={styles.orderInfoText}>{order.user_name}</Text>
+              <View style={styles.orderInfo}>
+                <View style={styles.orderInfoRow}>
+                  <Ionicons name="person-outline" size={16} color="#666" />
+                  <Text style={styles.orderInfoText}>{order.user_name}</Text>
+                </View>
+                <View style={styles.orderInfoRow}>
+                  <Ionicons name="cube-outline" size={16} color="#666" />
+                  <Text style={styles.orderInfoText}>{order.items.length} item(s)</Text>
+                </View>
+              </View>
+
+              <View style={styles.orderFooter}>
+                <Text style={styles.orderTotal}>R$ {order.final_total.toFixed(2)}</Text>
+                <View style={styles.orderBadges}>
+                  <View style={[styles.miniStatusBadge, { backgroundColor: getStatusColor(order.payment_status) }]}>
+                    <Text style={styles.miniStatusText}>{getStatusText(order.payment_status)}</Text>
                   </View>
-                  <View style={styles.orderInfoRow}>
-                    <Ionicons name="cube-outline" size={16} color="#666" />
-                    <Text style={styles.orderInfoText}>{order.items.length} item(s)</Text>
+                  <View style={[styles.miniStatusBadge, { backgroundColor: getStatusColor(order.delivery_status) }]}>
+                    <Text style={styles.miniStatusText}>{getStatusText(order.delivery_status)}</Text>
                   </View>
                 </View>
-
-                <View style={styles.orderFooter}>
-                  <Text style={styles.orderTotal}>R$ {order.final_total.toFixed(2)}</Text>
-                  <View style={styles.orderBadges}>
-                    <View style={[styles.miniStatusBadge, { backgroundColor: getStatusColor(order.payment_status) }]}>
-                      <Text style={styles.miniStatusText}>{getStatusText(order.payment_status)}</Text>
-                    </View>
-                    <View style={[styles.miniStatusBadge, { backgroundColor: getStatusColor(order.delivery_status) }]}>
-                      <Text style={styles.miniStatusText}>{getStatusText(order.delivery_status)}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              {/* Botão de cancelar - só aparece se não estiver cancelado */}
-              {order.payment_status !== 'cancelled' && (
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handleCancelOrder(order);
-                  }}
-                  disabled={updatingStatus}
-                >
-                  <Ionicons name="close-circle" size={18} color="#FF3B30" />
-                  <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+              </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
