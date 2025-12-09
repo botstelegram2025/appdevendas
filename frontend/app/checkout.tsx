@@ -12,6 +12,8 @@ export default function Checkout() {
   const { user } = useAuth();
   const { items, getTotal, getDiscount, getFinalTotal, clearCart } = useCartStore();
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
 
   const handleCheckout = async () => {
     setLoading(true);
