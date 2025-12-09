@@ -430,6 +430,47 @@ export default function OrdersManagement() {
             )}
           </View>
         </ScrollView>
+
+        {/* Modal de Confirmação de Cancelamento - Detalhes */}
+        <Modal
+          visible={showCancelModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowCancelModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Ionicons name="warning" size={48} color="#FF3B30" />
+                <Text style={styles.modalTitle}>Cancelar Pedido</Text>
+              </View>
+              
+              <Text style={styles.modalMessage}>
+                Tem certeza que deseja cancelar este pedido?{'\n\n'}
+                O cliente será notificado sobre caracteres inválidos e o estorno do valor.
+              </Text>
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => {
+                    setShowCancelModal(false);
+                    setOrderToCancel(null);
+                  }}
+                >
+                  <Text style={styles.modalButtonTextCancel}>Não</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonConfirm]}
+                  onPress={confirmCancelOrder}
+                >
+                  <Text style={styles.modalButtonTextConfirm}>Sim, Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
