@@ -825,18 +825,18 @@ async def get_dashboard_stats(current_user: Dict = Depends(get_admin_user)):
     else:
         prev_month_start = current_month_start.replace(month=now.month - 1)
     
-    # Current month stats
+    # Current month stats - incluir pedidos pagos E entregues
     current_month_orders = list(orders_collection.find({
-        "payment_status": "paid",
+        "payment_status": {"$in": ["paid", "approved"]},
         "created_at": {"$gte": current_month_start}
     }))
     
     current_revenue = sum(order["final_total"] for order in current_month_orders)
     current_count = len(current_month_orders)
     
-    # Previous month stats
+    # Previous month stats - incluir pedidos pagos E entregues
     prev_month_orders = list(orders_collection.find({
-        "payment_status": "paid",
+        "payment_status": {"$in": ["paid", "approved"]},
         "created_at": {"$gte": prev_month_start, "$lt": current_month_start}
     }))
     
