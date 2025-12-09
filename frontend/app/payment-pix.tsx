@@ -353,17 +353,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#007AFF',
     lineHeight: 20
-  },
-  simulateButton: {
-    backgroundColor: '#FF9500',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    alignItems: 'center'
-  },
-  simulateButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600'
   }
 });
