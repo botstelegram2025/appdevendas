@@ -208,22 +208,32 @@ export default function Orders() {
                 </View>
               </View>
 
-              {order.payment_status === 'pending' && order.payment_id && (
+              <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={styles.updateButton}
-                  onPress={() => updatePaymentStatus(order.id, order.payment_id)}
-                  disabled={updatingOrder === order.id}
+                  style={styles.detailsButton}
+                  onPress={() => router.push(`/order-details/${order.id}`)}
                 >
-                  {updatingOrder === order.id ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="refresh" size={16} color="#fff" />
-                      <Text style={styles.updateButtonText}>Atualizar Status do Pagamento</Text>
-                    </>
-                  )}
+                  <Ionicons name="eye-outline" size={16} color="#007AFF" />
+                  <Text style={styles.detailsButtonText}>Ver Detalhes</Text>
                 </TouchableOpacity>
-              )}
+
+                {order.payment_status === 'pending' && order.payment_id && (
+                  <TouchableOpacity
+                    style={styles.updateButton}
+                    onPress={() => updatePaymentStatus(order.id, order.payment_id)}
+                    disabled={updatingOrder === order.id}
+                  >
+                    {updatingOrder === order.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="refresh" size={16} color="#fff" />
+                        <Text style={styles.updateButtonText}>Atualizar</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           ))}
         </ScrollView>
