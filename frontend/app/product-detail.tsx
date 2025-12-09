@@ -264,6 +264,47 @@ export default function ProductDetail() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSuccessModal}
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIcon}>
+              <Ionicons name="checkmark-circle" size={60} color="#34C759" />
+            </View>
+            <Text style={styles.modalTitle}>Produto Adicionado!</Text>
+            <Text style={styles.modalMessage}>
+              {product?.name} foi adicionado ao seu carrinho.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonSecondary}
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.back();
+                }}
+              >
+                <Text style={styles.modalButtonSecondaryText}>Continuar Comprando</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButtonPrimary}
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.push('/(tabs)/cart');
+                }}
+              >
+                <Ionicons name="cart" size={20} color="#fff" />
+                <Text style={styles.modalButtonPrimaryText}>Ver Carrinho</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
