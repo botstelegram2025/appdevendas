@@ -164,21 +164,6 @@ export default function PaymentPix() {
                   </Text>
                 </View>
               )}
-              
-              {/* Botão para simular aprovação (apenas para testes) */}
-              <TouchableOpacity 
-                style={styles.simulateButton}
-                onPress={async () => {
-                  try {
-                    await axios.post(`${BACKEND_URL}/api/payments/${paymentId}/simulate-approval`);
-                    Alert.alert('Simulado!', 'Pagamento simulado como aprovado. Aguarde a verificação...');
-                  } catch (error) {
-                    console.error('Error simulating payment:', error);
-                  }
-                }}
-              >
-                <Text style={styles.simulateButtonText}>🧪 Simular Pagamento (Teste)</Text>
-              </TouchableOpacity>
             </View>
 
             <View style={styles.infoBox}>
