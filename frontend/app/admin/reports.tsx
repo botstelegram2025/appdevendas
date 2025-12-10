@@ -123,25 +123,25 @@ export default function ReportsScreen() {
           <View style={styles.summaryGrid}>
             <View style={[styles.summaryCard, { backgroundColor: '#007AFF10' }]}>
               <Ionicons name="cash-outline" size={32} color="#007AFF" />
-              <Text style={styles.summaryValue}>{formatCurrency(stats?.total_revenue || 0)}</Text>
-              <Text style={styles.summaryLabel}>Faturamento Total</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(stats?.current_month?.revenue || 0)}</Text>
+              <Text style={styles.summaryLabel}>Faturamento Mensal</Text>
             </View>
             
             <View style={[styles.summaryCard, { backgroundColor: '#34C75910' }]}>
               <Ionicons name="cart-outline" size={32} color="#34C759" />
-              <Text style={styles.summaryValue}>{stats?.total_orders || 0}</Text>
-              <Text style={styles.summaryLabel}>Total de Pedidos</Text>
+              <Text style={styles.summaryValue}>{stats?.current_month?.orders_count || 0}</Text>
+              <Text style={styles.summaryLabel}>Pedidos do Mês</Text>
             </View>
             
             <View style={[styles.summaryCard, { backgroundColor: '#FF950010' }]}>
               <Ionicons name="trending-up-outline" size={32} color="#FF9500" />
-              <Text style={styles.summaryValue}>{formatCurrency(stats?.average_ticket || 0)}</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(stats?.current_month?.avg_ticket || 0)}</Text>
               <Text style={styles.summaryLabel}>Ticket Médio</Text>
             </View>
             
             <View style={[styles.summaryCard, { backgroundColor: '#AF52DE10' }]}>
               <Ionicons name="checkmark-circle-outline" size={32} color="#AF52DE" />
-              <Text style={styles.summaryValue}>{stats?.status_counts.delivered || 0}</Text>
+              <Text style={styles.summaryValue}>{stats?.status_counts?.delivered || 0}</Text>
               <Text style={styles.summaryLabel}>Pedidos Entregues</Text>
             </View>
           </View>
