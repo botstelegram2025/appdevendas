@@ -223,13 +223,13 @@ export default function ReportsScreen() {
                     <Ionicons name="grid" size={24} color="#007AFF" />
                   </View>
                   <View style={styles.categoryInfo}>
-                    <Text style={styles.categoryName}>{category.category || 'Sem categoria'}</Text>
+                    <Text style={styles.categoryName}>{category.category_name || 'Sem categoria'}</Text>
                     <Text style={styles.categoryStats}>
-                      {category.total_sold} produtos vendidos
+                      {category.orders_count || 0} pedidos
                     </Text>
                   </View>
                   <View style={styles.categoryRevenue}>
-                    <Text style={styles.categoryValue}>{formatCurrency(category.total_revenue)}</Text>
+                    <Text style={styles.categoryValue}>{formatCurrency(category.revenue || 0)}</Text>
                   </View>
                 </View>
               ))}
