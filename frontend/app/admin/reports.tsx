@@ -152,23 +152,27 @@ export default function ReportsScreen() {
           <Text style={styles.sectionTitle}>Receita Mensal (Últimos 6 Meses)</Text>
           {monthlyRevenue.length > 0 ? (
             <View style={styles.chartContainer}>
-              {monthlyRevenue.slice(0, 6).map((item, index) => (
-                <View key={index} style={styles.barContainer}>
-                  <View style={styles.barWrapper}>
-                    <View 
-                      style={[
-                        styles.bar, 
-                        { 
-                          height: Math.max(30, (item.total / Math.max(...monthlyRevenue.map(r => r.total))) * 150),
-                          backgroundColor: '#007AFF'
-                        }
-                      ]} 
-                    />
+              {monthlyRevenue.slice(0, 6).map((item, index) => {
+                const maxRevenue = Math.max(...monthlyRevenue.map(r => r.revenue || 0));
+                const itemRevenue = item.revenue || 0;
+                return (
+                  <View key={index} style={styles.barContainer}>
+                    <View style={styles.barWrapper}>
+                      <View 
+                        style={[
+                          styles.bar, 
+                          { 
+                            height: maxRevenue > 0 ? Math.max(30, (itemRevenue / maxRevenue) * 150) : 30,
+                            backgroundColor: '#007AFF'
+                          }
+                        ]} 
+                      />
+                    </View>
+                    <Text style={styles.barValue}>{formatCurrency(itemRevenue)}</Text>
+                    <Text style={styles.barLabel}>{getMonthName(item.month)}</Text>
                   </View>
-                  <Text style={styles.barValue}>{formatCurrency(item.total)}</Text>
-                  <Text style={styles.barLabel}>{getMonthName(item.month)}</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           ) : (
             <View style={styles.emptyState}>
