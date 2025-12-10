@@ -587,8 +587,8 @@ Seu pedido foi entregue! ✅
 📋 *Produtos e Dados:*
 {products_text}
 
-✨ Agradecemos pela preferência!
-Para dúvidas, entre em contato."""
+✨ Agradecemos pela compra!
+Para dúvidas, entre em contato com o seu master!"""
         
         await send_whatsapp_notification(user['phone'], customer_message)
     
