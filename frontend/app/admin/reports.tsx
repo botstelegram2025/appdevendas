@@ -232,12 +232,16 @@ export default function ReportsScreen() {
           </View>
         )}
 
-        {/* Receita Mensal */}
+        {/* Receita ao Longo do Tempo */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Receita Mensal (Últimos 6 Meses)</Text>
+          <Text style={styles.sectionTitle}>
+            {period === 'week' ? 'Receita Diária (Últimos 7 Dias)' : 
+             period === 'year' ? 'Receita Mensal (Últimos 12 Meses)' : 
+             'Receita Mensal (Últimos 6 Meses)'}
+          </Text>
           {monthlyRevenue.length > 0 ? (
             <View style={styles.chartContainer}>
-              {monthlyRevenue.slice(0, 6).map((item, index) => {
+              {monthlyRevenue.map((item, index) => {
                 const maxRevenue = Math.max(...monthlyRevenue.map(r => r.revenue || 0));
                 const itemRevenue = item.revenue || 0;
                 return (
@@ -254,7 +258,8 @@ export default function ReportsScreen() {
                       />
                     </View>
                     <Text style={styles.barValue}>{formatCurrency(itemRevenue)}</Text>
-                    <Text style={styles.barLabel}>{getMonthName(item.month)}</Text>
+                    <Text style={styles.barLabel}>{item.label}</Text>
+                    <Text style={styles.barOrders}>{item.orders_count} ped.</Text>
                   </View>
                 );
               })}
