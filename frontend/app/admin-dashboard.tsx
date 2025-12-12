@@ -122,16 +122,20 @@ export default function AdminDashboard() {
           <Text style={styles.sectionTitle}>Status dos Pedidos</Text>
           <View style={styles.statusGrid}>
             <View style={styles.statusCard}>
-              <Text style={styles.statusValue}>{stats?.status_counts.pending}</Text>
+              <Text style={styles.statusValue}>{stats?.status_counts?.pending || 0}</Text>
               <Text style={styles.statusLabel}>Pendentes</Text>
             </View>
             <View style={styles.statusCard}>
-              <Text style={styles.statusValue}>{stats?.status_counts.paid}</Text>
-              <Text style={styles.statusLabel}>Pagos</Text>
+              <Text style={styles.statusValue}>{stats?.status_counts?.processing || 0}</Text>
+              <Text style={styles.statusLabel}>Processando</Text>
             </View>
             <View style={styles.statusCard}>
-              <Text style={styles.statusValue}>{stats?.status_counts.delivered}</Text>
+              <Text style={styles.statusValue}>{stats?.status_counts?.delivered || 0}</Text>
               <Text style={styles.statusLabel}>Entregues</Text>
+            </View>
+            <View style={styles.statusCard}>
+              <Text style={styles.statusValue}>{stats?.status_counts?.cancelled || 0}</Text>
+              <Text style={styles.statusLabel}>Cancelados</Text>
             </View>
           </View>
         </View>
