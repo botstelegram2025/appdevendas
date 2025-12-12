@@ -1000,8 +1000,12 @@ async def get_dashboard_stats(period: str = "month", current_user: Dict = Depend
         }
     }
 
-@app.get("/api/admin/dashboard/monthly-revenue")
-async def get_monthly_revenue(months: int = 6, current_user: Dict = Depends(get_admin_user)):
+@app.get("/api/admin/dashboard/revenue-over-time")
+async def get_revenue_over_time(period: str = "month", current_user: Dict = Depends(get_admin_user)):
+    """
+    Receita ao longo do tempo com base no período
+    period: 'week' (últimos 7 dias), 'month' (últimos 6 meses), 'year' (últimos 12 meses)
+    """
     now = datetime.utcnow()
     result = []
     
