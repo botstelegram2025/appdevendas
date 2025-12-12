@@ -1009,32 +1009,89 @@ async def get_revenue_over_time(period: str = "month", current_user: Dict = Depe
     now = datetime.utcnow()
     result = []
     
-    for i in range(months):
-        if now.month - i <= 0:
-            month = 12 + (now.month - i)
-            year = now.year - 1
-        else:
+    if period == "week":
+        # Últimos 7 dias
+        for i in range(7):
+            day = now - timedelta(days=i)
+            day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            
+            orders = list(orders_collection.find({
+                "payment_status": {"$in": ["paid", "approved"]},
+                "created_at": {"$gte": day_start, "$lt": day_end}
+            }))
+            
+            revenue = sum(order["final_total"] for order in orders)
+            
+            result.insert(0, {
+                "date": day_start.strftime("%Y-%m-%d"),
+                "label": day_start.strftime("%d/%m"),
+                "revenue": round(revenue, 2),
+                "orders_count": len(orders)
+            })
+    
+    elif period == "year":
+        # Últimos 12 meses
+        for i in range(12):
             month = now.month - i
             year = now.year
-        
-        month_start = datetime(year, month, 1)
-        if month == 12:
-            month_end = datetime(year + 1, 1, 1)
-        else:
-            month_end = datetime(year, month + 1, 1)
-        
-        orders = list(orders_collection.find({
-            "payment_status": {"$in": ["paid", "approved"]},
-            "created_at": {"$gte": month_start, "$lt": month_end}
-        }))
-        
-        revenue = sum(order["final_total"] for order in orders)
-        
-        result.insert(0, {
-            "month": f"{year}-{month:02d}",
-            "revenue": round(revenue, 2),
-            "orders_count": len(orders)
-        })
+            
+            while month <= 0:
+                month += 12
+                year -= 1
+            
+            month_start = datetime(year, month, 1)
+            if month == 12:
+                month_end = datetime(year + 1, 1, 1)
+            else:
+                month_end = datetime(year, month + 1, 1)
+            
+            orders = list(orders_collection.find({
+                "payment_status": {"$in": ["paid", "approved"]},
+                "created_at": {"$gte": month_start, "$lt": month_end}
+            }))
+            
+            revenue = sum(order["final_total"] for order in orders)
+            
+            months_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+            
+            result.insert(0, {
+                "date": f"{year}-{month:02d}",
+                "label": f"{months_pt[month-1]}/{str(year)[-2:]}",
+                "revenue": round(revenue, 2),
+                "orders_count": len(orders)
+            })
+    
+    else:  # month (padrão) - últimos 6 meses
+        for i in range(6):
+            month = now.month - i
+            year = now.year
+            
+            while month <= 0:
+                month += 12
+                year -= 1
+            
+            month_start = datetime(year, month, 1)
+            if month == 12:
+                month_end = datetime(year + 1, 1, 1)
+            else:
+                month_end = datetime(year, month + 1, 1)
+            
+            orders = list(orders_collection.find({
+                "payment_status": {"$in": ["paid", "approved"]},
+                "created_at": {"$gte": month_start, "$lt": month_end}
+            }))
+            
+            revenue = sum(order["final_total"] for order in orders)
+            
+            months_pt = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+            
+            result.insert(0, {
+                "date": f"{year}-{month:02d}",
+                "label": f"{months_pt[month-1]}/{str(year)[-2:]}",
+                "revenue": round(revenue, 2),
+                "orders_count": len(orders)
+            })
     
     return result
 
