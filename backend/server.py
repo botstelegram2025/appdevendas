@@ -881,57 +881,122 @@ async def payment_webhook(request: Request):
 
 # Dashboard Routes
 @app.get("/api/admin/dashboard/stats")
-async def get_dashboard_stats(current_user: Dict = Depends(get_admin_user)):
+async def get_dashboard_stats(period: str = "month", current_user: Dict = Depends(get_admin_user)):
+    """
+    Estatísticas do dashboard com filtro de período
+    period: 'week', 'month', 'year'
+    """
     now = datetime.utcnow()
-    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    # Previous month
-    if now.month == 1:
-        prev_month_start = current_month_start.replace(year=now.year - 1, month=12)
-    else:
-        prev_month_start = current_month_start.replace(month=now.month - 1)
+    # Definir período atual e anterior baseado no filtro
+    if period == "week":
+        # Semana atual (últimos 7 dias)
+        current_period_start = now - timedelta(days=7)
+        prev_period_start = now - timedelta(days=14)
+        prev_period_end = current_period_start
+    elif period == "year":
+        # Ano atual
+        current_period_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        prev_period_start = current_period_start.replace(year=now.year - 1)
+        prev_period_end = current_period_start
+    else:  # month (padrão)
+        # Mês atual
+        current_period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if now.month == 1:
+            prev_period_start = current_period_start.replace(year=now.year - 1, month=12)
+        else:
+            prev_period_start = current_period_start.replace(month=now.month - 1)
+        prev_period_end = current_period_start
     
-    # Current month stats - incluir pedidos pagos E entregues
-    current_month_orders = list(orders_collection.find({
+    # Current period stats
+    current_period_orders = list(orders_collection.find({
         "payment_status": {"$in": ["paid", "approved"]},
-        "created_at": {"$gte": current_month_start}
+        "created_at": {"$gte": current_period_start}
     }))
     
-    current_revenue = sum(order["final_total"] for order in current_month_orders)
-    current_count = len(current_month_orders)
+    current_revenue = sum(order["final_total"] for order in current_period_orders)
+    current_count = len(current_period_orders)
     
-    # Previous month stats - incluir pedidos pagos E entregues
-    prev_month_orders = list(orders_collection.find({
+    # Previous period stats
+    prev_period_orders = list(orders_collection.find({
         "payment_status": {"$in": ["paid", "approved"]},
-        "created_at": {"$gte": prev_month_start, "$lt": current_month_start}
+        "created_at": {"$gte": prev_period_start, "$lt": prev_period_end}
     }))
     
-    prev_revenue = sum(order["final_total"] for order in prev_month_orders)
+    prev_revenue = sum(order["final_total"] for order in prev_period_orders)
+    prev_count = len(prev_period_orders)
     
-    # Calculate percentage change
+    # Calculate percentage changes
     revenue_change = 0
     if prev_revenue > 0:
         revenue_change = ((current_revenue - prev_revenue) / prev_revenue) * 100
     
-    # Status counts
-    pending_count = orders_collection.count_documents({"payment_status": "pending"})
-    paid_count = orders_collection.count_documents({"payment_status": "paid", "delivery_status": "processing"})
-    delivered_count = orders_collection.count_documents({"delivery_status": "delivered", "created_at": {"$gte": current_month_start}})
+    orders_change = 0
+    if prev_count > 0:
+        orders_change = ((current_count - prev_count) / prev_count) * 100
+    
+    # Status counts (sempre do período atual)
+    pending_count = orders_collection.count_documents({
+        "payment_status": "pending",
+        "created_at": {"$gte": current_period_start}
+    })
+    processing_count = orders_collection.count_documents({
+        "payment_status": {"$in": ["paid", "approved"]},
+        "delivery_status": {"$ne": "delivered"},
+        "created_at": {"$gte": current_period_start}
+    })
+    delivered_count = orders_collection.count_documents({
+        "delivery_status": "delivered",
+        "created_at": {"$gte": current_period_start}
+    })
+    cancelled_count = orders_collection.count_documents({
+        "payment_status": "cancelled",
+        "created_at": {"$gte": current_period_start}
+    })
     
     # Average ticket
     avg_ticket = current_revenue / current_count if current_count > 0 else 0
     
+    # Top selling day
+    day_sales = {}
+    for order in current_period_orders:
+        day_key = order["created_at"].strftime("%Y-%m-%d")
+        if day_key not in day_sales:
+            day_sales[day_key] = {"revenue": 0, "count": 0}
+        day_sales[day_key]["revenue"] += order["final_total"]
+        day_sales[day_key]["count"] += 1
+    
+    best_day = None
+    best_day_revenue = 0
+    if day_sales:
+        best_day = max(day_sales.items(), key=lambda x: x[1]["revenue"])
+        best_day_revenue = best_day[1]["revenue"]
+        best_day = best_day[0]
+    
     return {
-        "current_month": {
+        "period": period,
+        "current_period": {
             "revenue": round(current_revenue, 2),
             "orders_count": current_count,
             "avg_ticket": round(avg_ticket, 2)
         },
-        "revenue_change_percent": round(revenue_change, 2),
+        "previous_period": {
+            "revenue": round(prev_revenue, 2),
+            "orders_count": prev_count
+        },
+        "changes": {
+            "revenue_percent": round(revenue_change, 2),
+            "orders_percent": round(orders_change, 2)
+        },
         "status_counts": {
             "pending": pending_count,
-            "paid": paid_count,
-            "delivered": delivered_count
+            "processing": processing_count,
+            "delivered": delivered_count,
+            "cancelled": cancelled_count
+        },
+        "best_day": {
+            "date": best_day,
+            "revenue": round(best_day_revenue, 2) if best_day else 0
         }
     }
 
