@@ -478,6 +478,79 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666'
   },
+  barOrders: {
+    fontSize: 9,
+    color: '#999',
+    marginTop: 2
+  },
+  changeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8
+  },
+  changeText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  statusGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  statusCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8
+  },
+  statusIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  statusValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000'
+  },
+  statusLabel: {
+    fontSize: 12,
+    color: '#666'
+  },
+  bestDayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF9E6',
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+    borderWidth: 2,
+    borderColor: '#FFD700'
+  },
+  bestDayInfo: {
+    flex: 1,
+    gap: 4
+  },
+  bestDayDate: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000'
+  },
+  bestDayRevenue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFD700'
+  },
+  bestDayLabel: {
+    fontSize: 14,
+    color: '#666'
+  },
   listContainer: {
     gap: 12
   },
