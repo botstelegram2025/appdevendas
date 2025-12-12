@@ -7,16 +7,29 @@ import axios from 'axios';
 import { BACKEND_URL } from '../config';
 
 interface DashboardStats {
-  current_month: {
+  period: string;
+  current_period: {
     revenue: number;
     orders_count: number;
     avg_ticket: number;
   };
-  revenue_change_percent: number;
+  previous_period: {
+    revenue: number;
+    orders_count: number;
+  };
+  changes: {
+    revenue_percent: number;
+    orders_percent: number;
+  };
   status_counts: {
     pending: number;
-    paid: number;
+    processing: number;
     delivered: number;
+    cancelled: number;
+  };
+  best_day: {
+    date: string | null;
+    revenue: number;
   };
 }
 
