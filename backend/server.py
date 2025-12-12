@@ -1411,6 +1411,280 @@ async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")
 
 # ============================================
+# WAHA PLUS - Gerenciamento de Múltiplas Sessões
+# ============================================
+
+class WhatsAppSessionCreate(BaseModel):
+    session_name: str = Field(..., description="Nome único da sessão (ex: vendas, suporte)")
+    description: Optional[str] = Field(None, description="Descrição da sessão")
+    phone_number: Optional[str] = Field(None, description="Número associado (opcional)")
+    is_default: bool = Field(False, description="Sessão padrão para notificações")
+
+class WhatsAppSessionUpdate(BaseModel):
+    description: Optional[str] = None
+    phone_number: Optional[str] = None
+    is_default: Optional[bool] = None
+
+@app.get("/api/admin/whatsapp/sessions")
+async def list_whatsapp_sessions(current_user: Dict = Depends(get_admin_user)):
+    """Listar todas as sessões WhatsApp cadastradas"""
+    try:
+        sessions = list(whatsapp_sessions_collection.find({}))
+        
+        # Buscar status de cada sessão no WAHA
+        for session in sessions:
+            session["_id"] = str(session["_id"])
+            session_name = session["session_name"]
+            
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(
+                        f"{WAHA_API_URL}/api/sessions/{session_name}",
+                        headers={"X-Api-Key": WAHA_API_KEY}
+                    )
+                    if response.status_code == 200:
+                        waha_data = response.json()
+                        session["waha_status"] = waha_data.get("status", "unknown")
+                        session["waha_data"] = waha_data
+                    else:
+                        session["waha_status"] = "not_found"
+            except Exception as e:
+                session["waha_status"] = "error"
+                session["waha_error"] = str(e)
+        
+        return sessions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/whatsapp/sessions")
+async def create_whatsapp_session(
+    session_data: WhatsAppSessionCreate,
+    current_user: Dict = Depends(get_admin_user)
+):
+    """Criar nova sessão WhatsApp"""
+    try:
+        # Verificar se já existe
+        existing = whatsapp_sessions_collection.find_one({"session_name": session_data.session_name})
+        if existing:
+            raise HTTPException(status_code=400, detail="Sessão com este nome já existe")
+        
+        # Se é padrão, remover flag de outras sessões
+        if session_data.is_default:
+            whatsapp_sessions_collection.update_many(
+                {},
+                {"$set": {"is_default": False}}
+            )
+        
+        # Criar sessão no banco
+        session_doc = {
+            "session_name": session_data.session_name,
+            "description": session_data.description,
+            "phone_number": session_data.phone_number,
+            "is_default": session_data.is_default,
+            "status": "created",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        result = whatsapp_sessions_collection.insert_one(session_doc)
+        session_doc["_id"] = str(result.inserted_id)
+        
+        # Criar sessão no WAHA
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{WAHA_API_URL}/api/sessions",
+                    json={
+                        "name": session_data.session_name,
+                        "config": {
+                            "webhooks": []
+                        }
+                    },
+                    headers={"X-Api-Key": WAHA_API_KEY}
+                )
+                
+                if response.status_code in [200, 201]:
+                    whatsapp_sessions_collection.update_one(
+                        {"_id": result.inserted_id},
+                        {"$set": {"status": "ready", "waha_created": True}}
+                    )
+                    session_doc["status"] = "ready"
+                else:
+                    session_doc["waha_error"] = response.text
+        except Exception as e:
+            session_doc["waha_error"] = str(e)
+        
+        return session_doc
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/whatsapp/sessions/{session_name}/start")
+async def start_whatsapp_session(session_name: str, current_user: Dict = Depends(get_admin_user)):
+    """Iniciar sessão WhatsApp (gera QR Code)"""
+    try:
+        session = whatsapp_sessions_collection.find_one({"session_name": session_name})
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{WAHA_API_URL}/api/sessions/{session_name}/start",
+                headers={"X-Api-Key": WAHA_API_KEY}
+            )
+            
+            if response.status_code in [200, 201]:
+                waha_data = response.json()
+                
+                # Atualizar status no banco
+                whatsapp_sessions_collection.update_one(
+                    {"session_name": session_name},
+                    {"$set": {
+                        "status": "starting",
+                        "updated_at": datetime.utcnow()
+                    }}
+                )
+                
+                return {
+                    "success": True,
+                    "message": "Sessão iniciada. Use o endpoint /qr para obter o QR Code",
+                    "waha_data": waha_data
+                }
+            else:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/whatsapp/sessions/{session_name}/stop")
+async def stop_whatsapp_session(session_name: str, current_user: Dict = Depends(get_admin_user)):
+    """Parar sessão WhatsApp"""
+    try:
+        session = whatsapp_sessions_collection.find_one({"session_name": session_name})
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{WAHA_API_URL}/api/sessions/{session_name}/stop",
+                headers={"X-Api-Key": WAHA_API_KEY}
+            )
+            
+            if response.status_code in [200, 201]:
+                whatsapp_sessions_collection.update_one(
+                    {"session_name": session_name},
+                    {"$set": {
+                        "status": "stopped",
+                        "updated_at": datetime.utcnow()
+                    }}
+                )
+                
+                return {"success": True, "message": "Sessão parada com sucesso"}
+            else:
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/whatsapp/sessions/{session_name}/qr")
+async def get_session_qr(session_name: str, current_user: Dict = Depends(get_admin_user)):
+    """Obter QR Code da sessão"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{WAHA_API_URL}/api/sessions/{session_name}/auth/qr",
+                headers={"X-Api-Key": WAHA_API_KEY}
+            )
+            
+            if response.status_code == 200:
+                qr_data = response.json()
+                return qr_data
+            else:
+                raise HTTPException(status_code=response.status_code, detail="QR Code não disponível")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/whatsapp/sessions/{session_name}/status")
+async def get_session_status(session_name: str, current_user: Dict = Depends(get_admin_user)):
+    """Obter status detalhado da sessão no WAHA"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                f"{WAHA_API_URL}/api/sessions/{session_name}",
+                headers={"X-Api-Key": WAHA_API_KEY}
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise HTTPException(status_code=response.status_code, detail="Sessão não encontrada no WAHA")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/whatsapp/sessions/{session_name}")
+async def delete_whatsapp_session(session_name: str, current_user: Dict = Depends(get_admin_user)):
+    """Deletar sessão WhatsApp"""
+    try:
+        session = whatsapp_sessions_collection.find_one({"session_name": session_name})
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+        # Parar e deletar no WAHA
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.delete(
+                    f"{WAHA_API_URL}/api/sessions/{session_name}",
+                    headers={"X-Api-Key": WAHA_API_KEY}
+                )
+        except:
+            pass  # Continuar mesmo se falhar no WAHA
+        
+        # Deletar do banco
+        whatsapp_sessions_collection.delete_one({"session_name": session_name})
+        
+        return {"success": True, "message": "Sessão deletada com sucesso"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/admin/whatsapp/sessions/{session_name}")
+async def update_whatsapp_session(
+    session_name: str,
+    update_data: WhatsAppSessionUpdate,
+    current_user: Dict = Depends(get_admin_user)
+):
+    """Atualizar configurações da sessão"""
+    try:
+        session = whatsapp_sessions_collection.find_one({"session_name": session_name})
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        
+        update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+        update_dict["updated_at"] = datetime.utcnow()
+        
+        # Se mudou para padrão, remover flag de outras
+        if update_data.is_default:
+            whatsapp_sessions_collection.update_many(
+                {"session_name": {"$ne": session_name}},
+                {"$set": {"is_default": False}}
+            )
+        
+        whatsapp_sessions_collection.update_one(
+            {"session_name": session_name},
+            {"$set": update_dict}
+        )
+        
+        return {"success": True, "message": "Sessão atualizada"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
 # SCHEDULED TASKS - Notificações Automáticas
 # ============================================
 
