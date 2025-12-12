@@ -81,6 +81,7 @@ categories_collection = db["categories"]
 products_collection = db["products"]
 orders_collection = db["orders"]
 payments_collection = db["payments"]
+whatsapp_sessions_collection = db["whatsapp_sessions"]
 
 # Mercado Pago credentials
 MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
