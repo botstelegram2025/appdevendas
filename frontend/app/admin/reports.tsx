@@ -27,12 +27,12 @@ export default function ReportsScreen() {
     try {
       setLoading(true);
       
-      // Carregar todas as estatísticas
+      // Carregar todas as estatísticas com o período selecionado
       const [statsRes, revenueRes, productsRes, categoriesRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/admin/dashboard/stats`, {
+        axios.get(`${BACKEND_URL}/api/admin/dashboard/stats?period=${period}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get(`${BACKEND_URL}/api/admin/dashboard/monthly-revenue`, {
+        axios.get(`${BACKEND_URL}/api/admin/dashboard/revenue-over-time?period=${period}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${BACKEND_URL}/api/admin/dashboard/top-products`, {
