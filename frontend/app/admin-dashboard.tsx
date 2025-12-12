@@ -88,17 +88,17 @@ export default function AdminDashboard() {
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Ionicons name="cash-outline" size={32} color="#34C759" />
-            <Text style={styles.statValue}>R$ {stats?.current_month.revenue.toFixed(2)}</Text>
+            <Text style={styles.statValue}>R$ {stats?.current_period?.revenue?.toFixed(2) || '0.00'}</Text>
             <Text style={styles.statLabel}>Faturamento do Mês</Text>
-            {stats && stats.revenue_change_percent !== 0 && (
-              <View style={[styles.changeTag, stats.revenue_change_percent > 0 ? styles.positive : styles.negative]}>
+            {stats && stats.changes && stats.changes.revenue_percent !== 0 && (
+              <View style={[styles.changeTag, stats.changes.revenue_percent > 0 ? styles.positive : styles.negative]}>
                 <Ionicons 
-                  name={stats.revenue_change_percent > 0 ? 'arrow-up' : 'arrow-down'} 
+                  name={stats.changes.revenue_percent > 0 ? 'arrow-up' : 'arrow-down'} 
                   size={12} 
                   color="#fff" 
                 />
                 <Text style={styles.changeText}>
-                  {Math.abs(stats.revenue_change_percent).toFixed(1)}%
+                  {Math.abs(stats.changes.revenue_percent).toFixed(1)}%
                 </Text>
               </View>
             )}
@@ -106,13 +106,13 @@ export default function AdminDashboard() {
 
           <View style={styles.statCard}>
             <Ionicons name="receipt-outline" size={32} color="#007AFF" />
-            <Text style={styles.statValue}>{stats?.current_month.orders_count}</Text>
+            <Text style={styles.statValue}>{stats?.current_period?.orders_count || 0}</Text>
             <Text style={styles.statLabel}>Pedidos do Mês</Text>
           </View>
 
           <View style={styles.statCard}>
             <Ionicons name="trending-up-outline" size={32} color="#FF9500" />
-            <Text style={styles.statValue}>R$ {stats?.current_month.avg_ticket.toFixed(2)}</Text>
+            <Text style={styles.statValue}>R$ {stats?.current_period?.avg_ticket?.toFixed(2) || '0.00'}</Text>
             <Text style={styles.statLabel}>Ticket Médio</Text>
           </View>
         </View>
