@@ -119,33 +119,118 @@ export default function ReportsScreen() {
 
         {/* Resumo Geral */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resumo Geral</Text>
+          <Text style={styles.sectionTitle}>Resumo do Período</Text>
           <View style={styles.summaryGrid}>
             <View style={[styles.summaryCard, { backgroundColor: '#007AFF10' }]}>
               <Ionicons name="cash-outline" size={32} color="#007AFF" />
-              <Text style={styles.summaryValue}>{formatCurrency(stats?.current_month?.revenue || 0)}</Text>
-              <Text style={styles.summaryLabel}>Faturamento Mensal</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(stats?.current_period?.revenue || 0)}</Text>
+              <Text style={styles.summaryLabel}>Faturamento</Text>
+              {stats?.changes?.revenue_percent !== 0 && (
+                <View style={styles.changeContainer}>
+                  <Ionicons 
+                    name={stats?.changes?.revenue_percent > 0 ? "trending-up" : "trending-down"} 
+                    size={14} 
+                    color={stats?.changes?.revenue_percent > 0 ? "#34C759" : "#FF3B30"} 
+                  />
+                  <Text style={[
+                    styles.changeText,
+                    { color: stats?.changes?.revenue_percent > 0 ? "#34C759" : "#FF3B30" }
+                  ]}>
+                    {Math.abs(stats?.changes?.revenue_percent || 0).toFixed(1)}%
+                  </Text>
+                </View>
+              )}
             </View>
             
             <View style={[styles.summaryCard, { backgroundColor: '#34C75910' }]}>
               <Ionicons name="cart-outline" size={32} color="#34C759" />
-              <Text style={styles.summaryValue}>{stats?.current_month?.orders_count || 0}</Text>
-              <Text style={styles.summaryLabel}>Pedidos do Mês</Text>
+              <Text style={styles.summaryValue}>{stats?.current_period?.orders_count || 0}</Text>
+              <Text style={styles.summaryLabel}>Pedidos</Text>
+              {stats?.changes?.orders_percent !== 0 && (
+                <View style={styles.changeContainer}>
+                  <Ionicons 
+                    name={stats?.changes?.orders_percent > 0 ? "trending-up" : "trending-down"} 
+                    size={14} 
+                    color={stats?.changes?.orders_percent > 0 ? "#34C759" : "#FF3B30"} 
+                  />
+                  <Text style={[
+                    styles.changeText,
+                    { color: stats?.changes?.orders_percent > 0 ? "#34C759" : "#FF3B30" }
+                  ]}>
+                    {Math.abs(stats?.changes?.orders_percent || 0).toFixed(1)}%
+                  </Text>
+                </View>
+              )}
             </View>
             
             <View style={[styles.summaryCard, { backgroundColor: '#FF950010' }]}>
               <Ionicons name="trending-up-outline" size={32} color="#FF9500" />
-              <Text style={styles.summaryValue}>{formatCurrency(stats?.current_month?.avg_ticket || 0)}</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(stats?.current_period?.avg_ticket || 0)}</Text>
               <Text style={styles.summaryLabel}>Ticket Médio</Text>
             </View>
             
             <View style={[styles.summaryCard, { backgroundColor: '#AF52DE10' }]}>
               <Ionicons name="checkmark-circle-outline" size={32} color="#AF52DE" />
               <Text style={styles.summaryValue}>{stats?.status_counts?.delivered || 0}</Text>
-              <Text style={styles.summaryLabel}>Pedidos Entregues</Text>
+              <Text style={styles.summaryLabel}>Entregues</Text>
             </View>
           </View>
         </View>
+        
+        {/* Status dos Pedidos */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Status dos Pedidos</Text>
+          <View style={styles.statusGrid}>
+            <View style={styles.statusCard}>
+              <View style={[styles.statusIcon, { backgroundColor: '#FF950010' }]}>
+                <Ionicons name="time-outline" size={24} color="#FF9500" />
+              </View>
+              <Text style={styles.statusValue}>{stats?.status_counts?.pending || 0}</Text>
+              <Text style={styles.statusLabel}>Pendentes</Text>
+            </View>
+            
+            <View style={styles.statusCard}>
+              <View style={[styles.statusIcon, { backgroundColor: '#007AFF10' }]}>
+                <Ionicons name="hourglass-outline" size={24} color="#007AFF" />
+              </View>
+              <Text style={styles.statusValue}>{stats?.status_counts?.processing || 0}</Text>
+              <Text style={styles.statusLabel}>Processando</Text>
+            </View>
+            
+            <View style={styles.statusCard}>
+              <View style={[styles.statusIcon, { backgroundColor: '#34C75910' }]}>
+                <Ionicons name="checkmark-circle-outline" size={24} color="#34C759" />
+              </View>
+              <Text style={styles.statusValue}>{stats?.status_counts?.delivered || 0}</Text>
+              <Text style={styles.statusLabel}>Entregues</Text>
+            </View>
+            
+            <View style={styles.statusCard}>
+              <View style={[styles.statusIcon, { backgroundColor: '#FF3B3010' }]}>
+                <Ionicons name="close-circle-outline" size={24} color="#FF3B30" />
+              </View>
+              <Text style={styles.statusValue}>{stats?.status_counts?.cancelled || 0}</Text>
+              <Text style={styles.statusLabel}>Cancelados</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Melhor Dia de Vendas */}
+        {stats?.best_day?.date && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Melhor Dia de Vendas</Text>
+            <View style={styles.bestDayCard}>
+              <Ionicons name="trophy" size={48} color="#FFD700" />
+              <View style={styles.bestDayInfo}>
+                <Text style={styles.bestDayDate}>
+                  {new Date(stats.best_day.date).toLocaleDateString('pt-BR')}
+                </Text>
+                <Text style={styles.bestDayRevenue}>{formatCurrency(stats.best_day.revenue)}</Text>
+                <Text style={styles.bestDayLabel}>em vendas</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Receita Mensal */}
         <View style={styles.section}>
