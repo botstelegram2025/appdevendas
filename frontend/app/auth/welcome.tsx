@@ -11,7 +11,15 @@ export default function Welcome() {
       <View style={styles.content}>
         <Ionicons name="cart" size={80} color="#007AFF" />
         <Text style={styles.title}>Bem-vindo!</Text>
-        <Text style={styles.subtitle}>Sua loja de produtos digitais</Text>
+        
+        {/* Subtitle com palavra "produtos" clicável para acesso admin secreto */}
+        <View style={styles.subtitleContainer}>
+          <Text style={styles.subtitle}>Sua loja de </Text>
+          <TouchableOpacity onPress={() => router.push('/auth/admin-login')}>
+            <Text style={styles.subtitle}>produtos</Text>
+          </TouchableOpacity>
+          <Text style={styles.subtitle}> digitais</Text>
+        </View>
         
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
@@ -26,13 +34,6 @@ export default function Welcome() {
             onPress={() => router.push('/auth/login')}
           >
             <Text style={styles.secondaryButtonText}>Fazer Login</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.linkButton}
-            onPress={() => router.push('/auth/admin-login')}
-          >
-            <Text style={styles.linkText}>Acesso Admin</Text>
           </TouchableOpacity>
         </View>
       </View>
