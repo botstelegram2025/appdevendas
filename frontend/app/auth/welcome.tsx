@@ -58,11 +58,15 @@ const styles = StyleSheet.create({
     marginTop: 24,
     color: '#000'
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
+  subtitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 8,
     marginBottom: 48
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666'
   },
   buttonContainer: {
     width: '100%',
