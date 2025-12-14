@@ -198,6 +198,17 @@ export default function AdminDashboard() {
             </View>
             <Ionicons name="chevron-forward" size={24} color="#CCC" />
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuCard} onPress={() => router.push('/admin/business-hours')}>
+            <View style={[styles.menuIcon, { backgroundColor: '#FF3B3020' }]}>
+              <Ionicons name="time" size={24} color="#FF3B30" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Horário de Atendimento</Text>
+              <Text style={styles.menuSubtitle}>Configurar horários de funcionamento</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#CCC" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
