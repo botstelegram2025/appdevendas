@@ -405,8 +405,15 @@ const styles = StyleSheet.create({
   saveDayButton: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
-    padding: 10,
-    alignItems: 'center'
+    padding: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12
+  },
+  saveDayButtonOpen: {
+    backgroundColor: '#34C759'
   },
   saveDayButtonText: {
     color: '#fff',
