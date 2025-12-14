@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Pressable } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import BusinessHoursCheck from '../../components/BusinessHoursCheck';
 
 export default function TabsLayout() {
   const { updateActivity } = useAuth();
@@ -14,6 +15,9 @@ export default function TabsLayout() {
 
   return (
     <View style={{ flex: 1 }} onTouchStart={updateActivity}>
+      {/* Verificação de Horário de Atendimento */}
+      <BusinessHoursCheck />
+      
       <Tabs
         screenOptions={{
           headerShown: false,
