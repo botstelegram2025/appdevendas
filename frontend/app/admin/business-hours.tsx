@@ -232,34 +232,24 @@ export default function BusinessHoursScreen() {
                         maxLength={5}
                       />
                     </View>
-
-                    <TouchableOpacity
-                      style={styles.saveIconButton}
-                      onPress={() => handleSaveSchedule(day)}
-                      disabled={savingDay === day.day_of_week}
-                    >
-                      {savingDay === day.day_of_week ? (
-                        <ActivityIndicator size="small" color="#34C759" />
-                      ) : (
-                        <Ionicons name="checkmark-circle" size={32} color="#34C759" />
-                      )}
-                    </TouchableOpacity>
                   </View>
                 )}
 
-                {!day.is_open && (
-                  <TouchableOpacity
-                    style={styles.saveDayButton}
-                    onPress={() => handleSaveSchedule(day)}
-                    disabled={savingDay === day.day_of_week}
-                  >
-                    {savingDay === day.day_of_week ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.saveDayButtonText}>Salvar</Text>
-                    )}
-                  </TouchableOpacity>
-                )}
+                {/* Botão de Salvar - SEMPRE visível */}
+                <TouchableOpacity
+                  style={[styles.saveDayButton, day.is_open && styles.saveDayButtonOpen]}
+                  onPress={() => handleSaveSchedule(day)}
+                  disabled={savingDay === day.day_of_week}
+                >
+                  {savingDay === day.day_of_week ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.saveDayButtonText}>Salvar Alterações</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             ))}
           </View>
