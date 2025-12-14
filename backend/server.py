@@ -1412,6 +1412,198 @@ async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")
 
 # ============================================
+# HORÁRIO DE ATENDIMENTO
+# ============================================
+
+class BusinessHoursConfig(BaseModel):
+    day_of_week: int = Field(..., ge=0, le=6, description="0=Domingo, 1=Segunda, ..., 6=Sábado")
+    is_open: bool = Field(True, description="Loja aberta neste dia")
+    open_time: str = Field(..., pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$", description="Horário de abertura (HH:MM)")
+    close_time: str = Field(..., pattern="^([01]?[0-9]|2[0-3]):[0-5][0-9]$", description="Horário de fechamento (HH:MM)")
+
+class BusinessHoursSettings(BaseModel):
+    enabled: bool = Field(False, description="Sistema de horário ativado")
+    closed_message: str = Field("Estamos fechados no momento. Voltaremos em breve!", description="Mensagem quando fechado")
+    timezone: str = Field("America/Sao_Paulo", description="Fuso horário")
+
+def get_business_hours_config():
+    """Obter configuração de horários de atendimento"""
+    config = business_hours_collection.find_one({"type": "config"})
+    if not config:
+        # Criar configuração padrão
+        default_config = {
+            "type": "config",
+            "enabled": False,
+            "closed_message": "🕐 Estamos fechados no momento.\n\nHorário de atendimento:\nSegunda a Sexta: 09:00 - 18:00\nSábado: 09:00 - 12:00\n\nVoltaremos em breve!",
+            "timezone": "America/Sao_Paulo",
+            "created_at": datetime.utcnow()
+        }
+        business_hours_collection.insert_one(default_config)
+        return default_config
+    return config
+
+def get_business_hours_schedule():
+    """Obter horários por dia da semana"""
+    schedule = list(business_hours_collection.find({"type": "schedule"}).sort("day_of_week", 1))
+    
+    if not schedule:
+        # Criar horários padrão (Segunda a Sexta 9h-18h, Sábado 9h-12h, Domingo fechado)
+        days = [
+            {"day_of_week": 0, "is_open": False, "open_time": "09:00", "close_time": "18:00"},  # Domingo
+            {"day_of_week": 1, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Segunda
+            {"day_of_week": 2, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Terça
+            {"day_of_week": 3, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Quarta
+            {"day_of_week": 4, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Quinta
+            {"day_of_week": 5, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Sexta
+            {"day_of_week": 6, "is_open": True, "open_time": "09:00", "close_time": "12:00"},   # Sábado
+        ]
+        
+        for day in days:
+            day["type"] = "schedule"
+            day["created_at"] = datetime.utcnow()
+            business_hours_collection.insert_one(day)
+        
+        schedule = days
+    
+    return schedule
+
+def is_business_open():
+    """Verificar se a loja está aberta agora"""
+    from datetime import datetime
+    import pytz
+    
+    config = get_business_hours_config()
+    
+    # Se sistema desativado, sempre aberto
+    if not config.get("enabled", False):
+        return {"is_open": True, "message": None, "next_open": None}
+    
+    # Obter horário atual no timezone configurado
+    tz = pytz.timezone(config.get("timezone", "America/Sao_Paulo"))
+    now = datetime.now(tz)
+    current_day = now.weekday() + 1  # Python usa 0=Segunda, precisamos 0=Domingo
+    if current_day == 7:
+        current_day = 0  # Domingo
+    
+    current_time = now.strftime("%H:%M")
+    
+    # Buscar configuração do dia atual
+    schedule = business_hours_collection.find_one({"type": "schedule", "day_of_week": current_day})
+    
+    if not schedule or not schedule.get("is_open", False):
+        # Fechado hoje, buscar próximo dia aberto
+        next_open = find_next_open_day(current_day)
+        return {
+            "is_open": False,
+            "message": config.get("closed_message", "Estamos fechados"),
+            "next_open": next_open,
+            "current_time": now.strftime("%H:%M"),
+            "current_day": current_day
+        }
+    
+    # Verificar se está dentro do horário
+    open_time = schedule["open_time"]
+    close_time = schedule["close_time"]
+    
+    if open_time <= current_time < close_time:
+        return {"is_open": True, "message": None, "closes_at": close_time}
+    else:
+        # Fora do horário
+        if current_time < open_time:
+            # Ainda não abriu hoje
+            next_open = {"day": current_day, "time": open_time, "today": True}
+        else:
+            # Já fechou hoje, buscar próximo dia
+            next_open = find_next_open_day(current_day)
+        
+        return {
+            "is_open": False,
+            "message": config.get("closed_message", "Estamos fechados"),
+            "next_open": next_open,
+            "current_time": current_time
+        }
+
+def find_next_open_day(current_day):
+    """Encontrar próximo dia/horário de abertura"""
+    days_pt = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
+    
+    for i in range(1, 8):
+        next_day = (current_day + i) % 7
+        schedule = business_hours_collection.find_one({"type": "schedule", "day_of_week": next_day})
+        
+        if schedule and schedule.get("is_open", False):
+            return {
+                "day": next_day,
+                "day_name": days_pt[next_day],
+                "time": schedule["open_time"],
+                "today": False
+            }
+    
+    return None
+
+@app.get("/api/business-hours/status")
+async def get_business_status():
+    """Verificar se a loja está aberta (público)"""
+    return is_business_open()
+
+@app.get("/api/admin/business-hours/config")
+async def get_business_hours_config_admin(current_user: Dict = Depends(get_admin_user)):
+    """Obter configuração de horários (admin)"""
+    config = get_business_hours_config()
+    schedule = get_business_hours_schedule()
+    
+    config["_id"] = str(config.get("_id", ""))
+    for day in schedule:
+        day["_id"] = str(day.get("_id", ""))
+    
+    return {
+        "config": config,
+        "schedule": schedule
+    }
+
+@app.put("/api/admin/business-hours/config")
+async def update_business_hours_config_admin(
+    settings: BusinessHoursSettings,
+    current_user: Dict = Depends(get_admin_user)
+):
+    """Atualizar configuração de horários (admin)"""
+    business_hours_collection.update_one(
+        {"type": "config"},
+        {"$set": {
+            "enabled": settings.enabled,
+            "closed_message": settings.closed_message,
+            "timezone": settings.timezone,
+            "updated_at": datetime.utcnow()
+        }},
+        upsert=True
+    )
+    
+    return {"success": True, "message": "Configuração atualizada"}
+
+@app.put("/api/admin/business-hours/schedule/{day_of_week}")
+async def update_business_hours_schedule(
+    day_of_week: int,
+    hours: BusinessHoursConfig,
+    current_user: Dict = Depends(get_admin_user)
+):
+    """Atualizar horário de um dia específico (admin)"""
+    if day_of_week < 0 or day_of_week > 6:
+        raise HTTPException(status_code=400, detail="Dia inválido (0-6)")
+    
+    business_hours_collection.update_one(
+        {"type": "schedule", "day_of_week": day_of_week},
+        {"$set": {
+            "is_open": hours.is_open,
+            "open_time": hours.open_time,
+            "close_time": hours.close_time,
+            "updated_at": datetime.utcnow()
+        }},
+        upsert=True
+    )
+    
+    return {"success": True, "message": f"Horário do dia {day_of_week} atualizado"}
+
+# ============================================
 # WAHA PLUS - Gerenciamento de Múltiplas Sessões
 # ============================================
 
