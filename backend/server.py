@@ -1476,16 +1476,17 @@ def is_business_open():
     
     # Se sistema desativado, sempre aberto
     if not config.get("enabled", False):
-        return {"is_open": True, "message": None, "next_open": None}
+        return {"is_open": True, "message": None, "next_open": None, "system_enabled": False}
     
     # Obter horário atual no timezone configurado
     tz = pytz.timezone(config.get("timezone", "America/Sao_Paulo"))
     now = datetime.now(tz)
-    current_day = now.weekday() + 1  # Python usa 0=Segunda, precisamos 0=Domingo
-    if current_day == 7:
-        current_day = 0  # Domingo
     
+    # Converter weekday do Python (0=Segunda) para nossa estrutura (0=Domingo)
+    current_day = (now.weekday() + 1) % 7
     current_time = now.strftime("%H:%M")
+    
+    days_pt = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
     
     # Buscar configuração do dia atual
     schedule = business_hours_collection.find_one({"type": "schedule", "day_of_week": current_day})
@@ -1495,32 +1496,53 @@ def is_business_open():
         next_open = find_next_open_day(current_day)
         return {
             "is_open": False,
-            "message": config.get("closed_message", "Estamos fechados"),
+            "message": config.get("closed_message", "Estamos fechados no momento."),
             "next_open": next_open,
-            "current_time": now.strftime("%H:%M"),
-            "current_day": current_day
+            "current_time": current_time,
+            "current_day": current_day,
+            "current_day_name": days_pt[current_day],
+            "system_enabled": True
         }
     
     # Verificar se está dentro do horário
-    open_time = schedule["open_time"]
-    close_time = schedule["close_time"]
+    open_time = schedule.get("open_time", "09:00")
+    close_time = schedule.get("close_time", "18:00")
+    
+    # Debug: log dos valores
+    print(f"🕐 Verificação de horário: Dia={days_pt[current_day]}, Hora Atual={current_time}, Abre={open_time}, Fecha={close_time}")
     
     if open_time <= current_time < close_time:
-        return {"is_open": True, "message": None, "closes_at": close_time}
+        print(f"✅ Loja ABERTA - Fecha às {close_time}")
+        return {
+            "is_open": True, 
+            "message": None, 
+            "closes_at": close_time,
+            "current_day_name": days_pt[current_day],
+            "system_enabled": True
+        }
     else:
         # Fora do horário
         if current_time < open_time:
             # Ainda não abriu hoje
-            next_open = {"day": current_day, "time": open_time, "today": True}
+            print(f"⏰ Loja ainda não abriu hoje - Abre às {open_time}")
+            next_open = {
+                "day": current_day,
+                "day_name": days_pt[current_day],
+                "time": open_time,
+                "today": True
+            }
         else:
             # Já fechou hoje, buscar próximo dia
+            print(f"🔒 Loja fechou hoje às {close_time}")
             next_open = find_next_open_day(current_day)
         
         return {
             "is_open": False,
-            "message": config.get("closed_message", "Estamos fechados"),
+            "message": config.get("closed_message", "Estamos fechados no momento."),
             "next_open": next_open,
-            "current_time": current_time
+            "current_time": current_time,
+            "current_day_name": days_pt[current_day],
+            "system_enabled": True
         }
 
 def find_next_open_day(current_day):
@@ -1535,7 +1557,7 @@ def find_next_open_day(current_day):
             return {
                 "day": next_day,
                 "day_name": days_pt[next_day],
-                "time": schedule["open_time"],
+                "time": schedule.get("open_time", "09:00"),
                 "today": False
             }
     
