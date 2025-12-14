@@ -1617,9 +1617,14 @@ async def update_business_hours_schedule(
     if day_of_week < 0 or day_of_week > 6:
         raise HTTPException(status_code=400, detail="Dia inválido (0-6)")
     
-    business_hours_collection.update_one(
+    days_pt = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
+    print(f"📝 Atualizando horário: {days_pt[day_of_week]} - Aberto={hours.is_open}, {hours.open_time}-{hours.close_time}")
+    
+    result = business_hours_collection.update_one(
         {"type": "schedule", "day_of_week": day_of_week},
         {"$set": {
+            "type": "schedule",
+            "day_of_week": day_of_week,
             "is_open": hours.is_open,
             "open_time": hours.open_time,
             "close_time": hours.close_time,
@@ -1627,6 +1632,8 @@ async def update_business_hours_schedule(
         }},
         upsert=True
     )
+    
+    print(f"✅ Horário {days_pt[day_of_week]} atualizado: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}")
     
     return {"success": True, "message": f"Horário do dia {day_of_week} atualizado"}
 
