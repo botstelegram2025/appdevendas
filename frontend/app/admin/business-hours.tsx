@@ -26,6 +26,7 @@ export default function BusinessHoursScreen() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingDay, setSavingDay] = useState<number | null>(null);
   const [config, setConfig] = useState<BusinessConfig>({
     enabled: false,
     closed_message: '',
