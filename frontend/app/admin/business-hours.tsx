@@ -236,8 +236,13 @@ export default function BusinessHoursScreen() {
                     <TouchableOpacity
                       style={styles.saveIconButton}
                       onPress={() => handleSaveSchedule(day)}
+                      disabled={savingDay === day.day_of_week}
                     >
-                      <Ionicons name="checkmark-circle" size={32} color="#34C759" />
+                      {savingDay === day.day_of_week ? (
+                        <ActivityIndicator size="small" color="#34C759" />
+                      ) : (
+                        <Ionicons name="checkmark-circle" size={32} color="#34C759" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 )}
@@ -246,8 +251,13 @@ export default function BusinessHoursScreen() {
                   <TouchableOpacity
                     style={styles.saveDayButton}
                     onPress={() => handleSaveSchedule(day)}
+                    disabled={savingDay === day.day_of_week}
                   >
-                    <Text style={styles.saveDayButtonText}>Salvar</Text>
+                    {savingDay === day.day_of_week ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.saveDayButtonText}>Salvar</Text>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
