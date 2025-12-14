@@ -1447,15 +1447,15 @@ def get_business_hours_schedule():
     schedule = list(business_hours_collection.find({"type": "schedule"}).sort("day_of_week", 1))
     
     if not schedule:
-        # Criar horários padrão (Todos os dias 9h-18h, Sábado 9h-12h)
+        # Criar horários padrão (Todos os dias com mesmo horário: 9h-18h)
         days = [
             {"day_of_week": 0, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Domingo
-            {"day_of_week": 1, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Segunda
-            {"day_of_week": 2, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Terça
-            {"day_of_week": 3, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Quarta
-            {"day_of_week": 4, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Quinta
-            {"day_of_week": 5, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Sexta
-            {"day_of_week": 6, "is_open": True, "open_time": "09:00", "close_time": "12:00"},   # Sábado
+            {"day_of_week": 1, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Segunda
+            {"day_of_week": 2, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Terça
+            {"day_of_week": 3, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Quarta
+            {"day_of_week": 4, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Quinta
+            {"day_of_week": 5, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Sexta
+            {"day_of_week": 6, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Sábado
         ]
         
         for day in days:
