@@ -1589,9 +1589,12 @@ async def update_business_hours_config_admin(
     current_user: Dict = Depends(get_admin_user)
 ):
     """Atualizar configuração de horários (admin)"""
-    business_hours_collection.update_one(
+    print(f"📝 Atualizando configuração: enabled={settings.enabled}, timezone={settings.timezone}")
+    
+    result = business_hours_collection.update_one(
         {"type": "config"},
         {"$set": {
+            "type": "config",
             "enabled": settings.enabled,
             "closed_message": settings.closed_message,
             "timezone": settings.timezone,
@@ -1599,6 +1602,8 @@ async def update_business_hours_config_admin(
         }},
         upsert=True
     )
+    
+    print(f"✅ Configuração atualizada: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}")
     
     return {"success": True, "message": "Configuração atualizada"}
 
