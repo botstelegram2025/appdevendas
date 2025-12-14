@@ -1447,9 +1447,9 @@ def get_business_hours_schedule():
     schedule = list(business_hours_collection.find({"type": "schedule"}).sort("day_of_week", 1))
     
     if not schedule:
-        # Criar horários padrão (Segunda a Sexta 9h-18h, Sábado 9h-12h, Domingo fechado)
+        # Criar horários padrão (Todos os dias 9h-18h, Sábado 9h-12h)
         days = [
-            {"day_of_week": 0, "is_open": False, "open_time": "09:00", "close_time": "18:00"},  # Domingo
+            {"day_of_week": 0, "is_open": True, "open_time": "09:00", "close_time": "18:00"},  # Domingo
             {"day_of_week": 1, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Segunda
             {"day_of_week": 2, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Terça
             {"day_of_week": 3, "is_open": True, "open_time": "09:00", "close_time": "18:00"},   # Quarta
