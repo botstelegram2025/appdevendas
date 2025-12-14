@@ -76,7 +76,11 @@ export default function BusinessHoursScreen() {
 
   const handleSaveSchedule = async (day: DaySchedule) => {
     try {
-      await axios.put(
+      setSavingDay(day.day_of_week);
+      
+      console.log(`💾 Salvando ${daysOfWeek[day.day_of_week]}: Aberto=${day.is_open}, ${day.open_time}-${day.close_time}`);
+      
+      const response = await axios.put(
         `${BACKEND_URL}/api/admin/business-hours/schedule/${day.day_of_week}`,
         {
           day_of_week: day.day_of_week,
@@ -87,10 +91,18 @@ export default function BusinessHoursScreen() {
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
       
-      Alert.alert('Sucesso', `Horário de ${daysOfWeek[day.day_of_week]} atualizado!`);
-    } catch (error) {
-      console.error('Erro ao salvar horário:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o horário');
+      console.log(`✅ ${daysOfWeek[day.day_of_week]} salvo com sucesso!`, response.data);
+      
+      // Recarregar dados para confirmar
+      await loadBusinessHours();
+      
+      Alert.alert('✅ Salvo!', `Horário de ${daysOfWeek[day.day_of_week]} atualizado com sucesso!`);
+    } catch (error: any) {
+      console.error('❌ Erro ao salvar horário:', error);
+      const errorMsg = error.response?.data?.detail || 'Não foi possível salvar o horário';
+      Alert.alert('❌ Erro', errorMsg);
+    } finally {
+      setSavingDay(null);
     }
   };
 
