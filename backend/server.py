@@ -1434,7 +1434,7 @@ def get_business_hours_config():
         default_config = {
             "type": "config",
             "enabled": False,
-            "closed_message": "🕐 Estamos fechados no momento.\n\nHorário de atendimento:\nSegunda a Sexta: 09:00 - 18:00\nSábado: 09:00 - 12:00\n\nVoltaremos em breve!",
+            "closed_message": "🕐 Estamos fechados no momento.\n\nHorário de atendimento:\nTodos os dias: 09:00 - 18:00\n\nVoltaremos em breve!",
             "timezone": "America/Sao_Paulo",
             "created_at": datetime.utcnow()
         }
