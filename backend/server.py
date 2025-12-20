@@ -1508,16 +1508,25 @@ def is_business_open():
     open_time = schedule.get("open_time", "09:00")
     close_time = schedule.get("close_time", "18:00")
     
-    # Debug: log dos valores
-    print(f"🕐 Verificação de horário: Dia={days_pt[current_day]}, Hora Atual={current_time}, Abre={open_time}, Fecha={close_time}")
+    # Debug: log dos valores com mais detalhes
+    print(f"🕐 Verificação de horário:")
+    print(f"   Dia: {days_pt[current_day]} (day_of_week={current_day})")
+    print(f"   Hora Atual: {current_time}")
+    print(f"   Horário Configurado: {open_time} - {close_time}")
+    print(f"   Comparação: {current_time} >= {open_time} ? {current_time >= open_time}")
+    print(f"   Comparação: {current_time} < {close_time} ? {current_time < close_time}")
     
-    if open_time <= current_time < close_time:
+    # Verificação: hora atual >= abertura E hora atual < fechamento
+    is_within_hours = (current_time >= open_time) and (current_time < close_time)
+    
+    if is_within_hours:
         print(f"✅ Loja ABERTA - Fecha às {close_time}")
         return {
             "is_open": True, 
             "message": None, 
             "closes_at": close_time,
             "current_day_name": days_pt[current_day],
+            "current_time": current_time,
             "system_enabled": True
         }
     else:
