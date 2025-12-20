@@ -606,6 +606,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666'
   },
+  dailyAvgCard: {
+    backgroundColor: '#F0F7FF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF30'
+  },
+  dailyAvgHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16
+  },
+  dailyAvgPeriod: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF'
+  },
+  dailyAvgGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginBottom: 16
+  },
+  dailyAvgItem: {
+    flex: 1,
+    alignItems: 'center'
+  },
+  dailyAvgDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#007AFF30'
+  },
+  dailyAvgLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8
+  },
+  dailyAvgValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007AFF'
+  },
+  dailyAvgInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8
+  },
+  dailyAvgInfoText: {
+    fontSize: 12,
+    color: '#666',
+    flex: 1
+  },
   listContainer: {
     gap: 12
   },
