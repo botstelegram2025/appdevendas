@@ -959,6 +959,14 @@ async def get_dashboard_stats(period: str = "month", current_user: Dict = Depend
     # Average ticket
     avg_ticket = current_revenue / current_count if current_count > 0 else 0
     
+    # Calcular média diária de vendas
+    days_in_period = (now - current_period_start).days + 1  # +1 para incluir hoje
+    if days_in_period == 0:
+        days_in_period = 1
+    
+    daily_avg_revenue = current_revenue / days_in_period
+    daily_avg_orders = current_count / days_in_period
+    
     # Top selling day
     day_sales = {}
     for order in current_period_orders:
@@ -980,7 +988,10 @@ async def get_dashboard_stats(period: str = "month", current_user: Dict = Depend
         "current_period": {
             "revenue": round(current_revenue, 2),
             "orders_count": current_count,
-            "avg_ticket": round(avg_ticket, 2)
+            "avg_ticket": round(avg_ticket, 2),
+            "daily_avg_revenue": round(daily_avg_revenue, 2),
+            "daily_avg_orders": round(daily_avg_orders, 2),
+            "days_in_period": days_in_period
         },
         "previous_period": {
             "revenue": round(prev_revenue, 2),
