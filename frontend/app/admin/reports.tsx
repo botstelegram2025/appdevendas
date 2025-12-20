@@ -215,6 +215,61 @@ export default function ReportsScreen() {
           </View>
         </View>
 
+        {/* Média Diária */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Média Diária de Vendas</Text>
+          <View style={styles.dailyAvgCard}>
+            <View style={styles.dailyAvgHeader}>
+              <Ionicons name="calendar" size={32} color="#007AFF" />
+              <Text style={styles.dailyAvgPeriod}>
+                {stats?.current_period?.days_in_period || 0} dias no período
+              </Text>
+            </View>
+            
+            <View style={styles.dailyAvgGrid}>
+              <View style={styles.dailyAvgItem}>
+                <Text style={styles.dailyAvgLabel}>Faturamento/Dia</Text>
+                <Text style={styles.dailyAvgValue}>
+                  {formatCurrency(stats?.current_period?.daily_avg_revenue || 0)}
+                </Text>
+              </View>
+              
+              <View style={styles.dailyAvgDivider} />
+              
+              <View style={styles.dailyAvgItem}>
+                <Text style={styles.dailyAvgLabel}>Pedidos/Dia</Text>
+                <Text style={styles.dailyAvgValue}>
+                  {(stats?.current_period?.daily_avg_orders || 0).toFixed(1)}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.dailyAvgInfo}>
+              <Ionicons name="information-circle" size={16} color="#666" />
+              <Text style={styles.dailyAvgInfoText}>
+                Média calculada com base nos últimos{' '}
+                {period === 'week' ? '7 dias' : period === 'year' ? '12 meses' : '30 dias'}
+              </Text>
+            </View>
+          </View>
+        </View>
+              <View style={[styles.statusIcon, { backgroundColor: '#34C75910' }]}>
+                <Ionicons name="checkmark-circle-outline" size={24} color="#34C759" />
+              </View>
+              <Text style={styles.statusValue}>{stats?.status_counts?.delivered || 0}</Text>
+              <Text style={styles.statusLabel}>Entregues</Text>
+            </View>
+            
+            <View style={styles.statusCard}>
+              <View style={[styles.statusIcon, { backgroundColor: '#FF3B3010' }]}>
+                <Ionicons name="close-circle-outline" size={24} color="#FF3B30" />
+              </View>
+              <Text style={styles.statusValue}>{stats?.status_counts?.cancelled || 0}</Text>
+              <Text style={styles.statusLabel}>Cancelados</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Melhor Dia de Vendas */}
         {stats?.best_day?.date && (
           <View style={styles.section}>
