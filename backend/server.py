@@ -1627,7 +1627,21 @@ async def update_business_hours_schedule(
         raise HTTPException(status_code=400, detail="Dia inválido (0-6)")
     
     days_pt = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"]
-    print(f"📝 Atualizando horário: {days_pt[day_of_week]} - Aberto={hours.is_open}, {hours.open_time}-{hours.close_time}")
+    
+    # Normalizar horários para formato HH:MM
+    def normalize_time(time_str: str) -> str:
+        """Garantir formato HH:MM"""
+        parts = time_str.split(":")
+        if len(parts) == 2:
+            hour = parts[0].zfill(2)  # Adicionar zero à esquerda se necessário
+            minute = parts[1].zfill(2)
+            return f"{hour}:{minute}"
+        return time_str
+    
+    open_time_normalized = normalize_time(hours.open_time)
+    close_time_normalized = normalize_time(hours.close_time)
+    
+    print(f"📝 Atualizando horário: {days_pt[day_of_week]} - Aberto={hours.is_open}, {open_time_normalized}-{close_time_normalized}")
     
     result = business_hours_collection.update_one(
         {"type": "schedule", "day_of_week": day_of_week},
@@ -1635,8 +1649,8 @@ async def update_business_hours_schedule(
             "type": "schedule",
             "day_of_week": day_of_week,
             "is_open": hours.is_open,
-            "open_time": hours.open_time,
-            "close_time": hours.close_time,
+            "open_time": open_time_normalized,
+            "close_time": close_time_normalized,
             "updated_at": datetime.utcnow()
         }},
         upsert=True
