@@ -517,5 +517,167 @@ const styles = StyleSheet.create({
   menuSubtitle: {
     fontSize: 12,
     color: '#666'
+  },
+  // WhatsApp Alert Banner Styles
+  whatsappAlertBanner: {
+    backgroundColor: '#FFF3E0',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#FF9500'
+  },
+  whatsappAlertContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1
+  },
+  whatsappAlertText: {
+    flex: 1
+  },
+  whatsappAlertTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FF9500'
+  },
+  whatsappAlertSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2
+  },
+  // QR Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  qrModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '90%'
+  },
+  qrModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20
+  },
+  qrAlertIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF3E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  qrModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF9500',
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  qrModalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20
+  },
+  qrLoadingContainer: {
+    alignItems: 'center',
+    padding: 40
+  },
+  qrLoadingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 16
+  },
+  qrCodeContainer: {
+    alignItems: 'center'
+  },
+  qrCodeImage: {
+    width: 250,
+    height: 250,
+    marginBottom: 16
+  },
+  qrInstructions: {
+    backgroundColor: '#E8F5E9',
+    padding: 16,
+    borderRadius: 12,
+    width: '100%'
+  },
+  qrInstructionsTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#25D366',
+    marginBottom: 8
+  },
+  qrInstructionsText: {
+    fontSize: 13,
+    color: '#25D366',
+    lineHeight: 20
+  },
+  qrNotAvailable: {
+    alignItems: 'center',
+    padding: 20
+  },
+  qrNotAvailableText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 12,
+    marginBottom: 20
+  },
+  startSessionButton: {
+    backgroundColor: '#25D366',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  startSessionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff'
+  },
+  qrModalButtons: {
+    marginTop: 20,
+    gap: 12
+  },
+  qrRefreshButton: {
+    backgroundColor: '#F0F7FF',
+    padding: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8
+  },
+  qrRefreshButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF'
+  },
+  qrCloseButton: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0'
+  },
+  qrCloseButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666'
   }
 });
