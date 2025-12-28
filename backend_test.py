@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv('/app/backend/.env')
 
 # Configuration
-BACKEND_URL = "https://smartshop-76.preview.emergentagent.com/api"
+BACKEND_URL = "https://digisales-admin.preview.emergentagent.com/api"
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 
 # Test credentials
