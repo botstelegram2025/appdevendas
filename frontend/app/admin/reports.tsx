@@ -253,22 +253,6 @@ export default function ReportsScreen() {
             </View>
           </View>
         </View>
-              <View style={[styles.statusIcon, { backgroundColor: '#34C75910' }]}>
-                <Ionicons name="checkmark-circle-outline" size={24} color="#34C759" />
-              </View>
-              <Text style={styles.statusValue}>{stats?.status_counts?.delivered || 0}</Text>
-              <Text style={styles.statusLabel}>Entregues</Text>
-            </View>
-            
-            <View style={styles.statusCard}>
-              <View style={[styles.statusIcon, { backgroundColor: '#FF3B3010' }]}>
-                <Ionicons name="close-circle-outline" size={24} color="#FF3B30" />
-              </View>
-              <Text style={styles.statusValue}>{stats?.status_counts?.cancelled || 0}</Text>
-              <Text style={styles.statusLabel}>Cancelados</Text>
-            </View>
-          </View>
-        </View>
 
         {/* Melhor Dia de Vendas */}
         {stats?.best_day?.date && (
