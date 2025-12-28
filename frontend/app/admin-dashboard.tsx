@@ -148,6 +148,81 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Modal QR Code WhatsApp */}
+      <Modal
+        visible={showQrModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowQrModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.qrModalContent}>
+            <View style={styles.qrModalHeader}>
+              <View style={styles.qrAlertIcon}>
+                <Ionicons name="alert-circle" size={32} color="#FF9500" />
+              </View>
+              <Text style={styles.qrModalTitle}>WhatsApp Desconectado!</Text>
+              <Text style={styles.qrModalSubtitle}>
+                As notificações automáticas não estão funcionando. Escaneie o QR Code abaixo para reconectar.
+              </Text>
+            </View>
+            
+            {whatsappStatus.loading ? (
+              <View style={styles.qrLoadingContainer}>
+                <ActivityIndicator size="large" color="#25D366" />
+                <Text style={styles.qrLoadingText}>Gerando QR Code...</Text>
+              </View>
+            ) : whatsappStatus.qrCode ? (
+              <View style={styles.qrCodeContainer}>
+                <Image
+                  source={{ uri: whatsappStatus.qrCode }}
+                  style={styles.qrCodeImage}
+                  resizeMode="contain"
+                />
+                <View style={styles.qrInstructions}>
+                  <Text style={styles.qrInstructionsTitle}>Como reconectar:</Text>
+                  <Text style={styles.qrInstructionsText}>
+                    1. Abra o WhatsApp no celular{'\n'}
+                    2. Vá em ⋮ → Aparelhos conectados{'\n'}
+                    3. Toque em "Conectar um aparelho"{'\n'}
+                    4. Escaneie este QR Code
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.qrNotAvailable}>
+                <Ionicons name="qr-code-outline" size={64} color="#CCC" />
+                <Text style={styles.qrNotAvailableText}>QR Code não disponível</Text>
+                <TouchableOpacity 
+                  style={styles.startSessionButton}
+                  onPress={startWhatsAppSession}
+                >
+                  <Ionicons name="play-circle" size={20} color="#fff" />
+                  <Text style={styles.startSessionButtonText}>Iniciar Sessão</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            <View style={styles.qrModalButtons}>
+              <TouchableOpacity 
+                style={styles.qrRefreshButton}
+                onPress={checkWhatsAppStatus}
+              >
+                <Ionicons name="refresh" size={20} color="#007AFF" />
+                <Text style={styles.qrRefreshButtonText}>Atualizar Status</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.qrCloseButton}
+                onPress={() => setShowQrModal(false)}
+              >
+                <Text style={styles.qrCloseButtonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Painel Admin</Text>
@@ -159,6 +234,23 @@ export default function AdminDashboard() {
       </View>
 
       <ScrollView style={styles.content}>
+        {/* WhatsApp Alert Banner */}
+        {!whatsappStatus.loading && !whatsappStatus.connected && (
+          <TouchableOpacity 
+            style={styles.whatsappAlertBanner}
+            onPress={() => setShowQrModal(true)}
+          >
+            <View style={styles.whatsappAlertContent}>
+              <Ionicons name="alert-circle" size={24} color="#FF9500" />
+              <View style={styles.whatsappAlertText}>
+                <Text style={styles.whatsappAlertTitle}>⚠️ WhatsApp Desconectado</Text>
+                <Text style={styles.whatsappAlertSubtitle}>Toque aqui para reconectar e ver o QR Code</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#FF9500" />
+          </TouchableOpacity>
+        )}
+
         {/* Stats Cards */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
