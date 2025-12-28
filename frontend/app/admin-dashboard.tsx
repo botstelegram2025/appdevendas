@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Alert, Image, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +31,12 @@ interface DashboardStats {
     date: string | null;
     revenue: number;
   };
+}
+
+interface WhatsAppStatus {
+  connected: boolean;
+  qrCode: string | null;
+  loading: boolean;
 }
 
 export default function AdminDashboard() {
