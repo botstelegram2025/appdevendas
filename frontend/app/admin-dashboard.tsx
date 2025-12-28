@@ -41,13 +41,82 @@ interface WhatsAppStatus {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, adminToken } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [whatsappStatus, setWhatsappStatus] = useState<WhatsAppStatus>({
+    connected: true,
+    qrCode: null,
+    loading: true
+  });
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [hasShownAlert, setHasShownAlert] = useState(false);
 
   useEffect(() => {
     loadStats();
+    checkWhatsAppStatus();
   }, []);
+
+  // Verificar se WhatsApp está desconectado e mostrar alerta
+  useEffect(() => {
+    if (!whatsappStatus.loading && !whatsappStatus.connected && !hasShownAlert) {
+      setHasShownAlert(true);
+      // Mostrar o modal do QR Code automaticamente
+      setShowQrModal(true);
+    }
+  }, [whatsappStatus.loading, whatsappStatus.connected, hasShownAlert]);
+
+  const checkWhatsAppStatus = async () => {
+    try {
+      setWhatsappStatus(prev => ({ ...prev, loading: true }));
+      
+      const response = await axios.get(`${BACKEND_URL}/api/whatsapp/status`);
+      const isConnected = response.data.connected;
+      
+      let qrCode = null;
+      if (!isConnected) {
+        try {
+          const qrResponse = await axios.get(`${BACKEND_URL}/api/whatsapp/qr`);
+          if (qrResponse.data.qr) {
+            qrCode = qrResponse.data.qr;
+          }
+        } catch (qrError) {
+          console.log('QR não disponível ainda');
+        }
+      }
+      
+      setWhatsappStatus({
+        connected: isConnected,
+        qrCode: qrCode,
+        loading: false
+      });
+    } catch (error) {
+      console.error('Erro ao verificar status WhatsApp:', error);
+      setWhatsappStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const startWhatsAppSession = async () => {
+    try {
+      setWhatsappStatus(prev => ({ ...prev, loading: true }));
+      await axios.post(
+        `${BACKEND_URL}/api/whatsapp/start`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }
+      );
+      // Aguardar e verificar novamente
+      setTimeout(() => {
+        checkWhatsAppStatus();
+      }, 3000);
+    } catch (error: any) {
+      Alert.alert('Erro', error.response?.data?.detail || 'Erro ao iniciar sessão');
+      setWhatsappStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   const loadStats = async () => {
     try {
