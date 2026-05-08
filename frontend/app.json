@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "MARKIMAGEM TV",
+    "slug": "markimagem-tv",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo-markimagem.png",
+    "scheme": "markimagem",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/logo-markimagem.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.markimagem.tv"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo-markimagem.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.markimagem.tv",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/logo-markimagem.png",
+      "name": "MARKIMAGEM TV",
+      "shortName": "MARKIMAGEM",
+      "description": "Ativações e Recargas - MARKIMAGEM TV",
+      "backgroundColor": "#ffffff",
+      "themeColor": "#FF6B00",
+      "orientation": "portrait",
+      "display": "standalone",
+      "startUrl": "/",
+      "scope": "/"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo-markimagem.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "d021d224-e474-452c-b75c-d5a7aa6af546"
+      }
+    },
+    "owner": "markimagem"
+  }
+}

@@ -1,0 +1,34 @@
+# Dockerfile de Produção para Frontend (PWA)
+# Build estático otimizado para web
+
+FROM node:18-alpine AS builder
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar package files
+COPY frontend/package.json frontend/yarn.lock ./
+
+# Instalar dependências
+RUN yarn install --frozen-lockfile
+
+# Copiar código do frontend
+COPY frontend/ .
+
+# Build para web (gera arquivos estáticos)
+RUN yarn web:build
+
+# Stage 2: Servir com Nginx
+FROM nginx:alpine
+
+# Copiar arquivos buildados
+COPY --from=builder /app/web-build /usr/share/nginx/html
+
+# Copiar configuração customizada do nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expor porta
+EXPOSE 80
+
+# Comando para iniciar nginx
+CMD ["nginx", "-g", "daemon off;"]

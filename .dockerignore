@@ -1,0 +1,45 @@
+# Node modules
+node_modules
+frontend/node_modules
+backend/__pycache__
+
+# Environment files (serão configurados no Railway)
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs
+
+# Cache
+.cache
+.metro-cache
+frontend/.metro-cache
+
+# Build outputs
+build
+dist
+.expo
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.pytest_cache
+
+# Temporary files
+tmp
+temp
+*.swp
+*.swo

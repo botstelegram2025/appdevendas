@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Banco de dados MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: markimagem-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: digital_sales_app
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - markimagem-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: markimagem-backend
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=digital_sales_app
+      - JWT_SECRET=${JWT_SECRET}
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
+      - MERCADOPAGO_PUBLIC_KEY=${MERCADOPAGO_PUBLIC_KEY}
+      - WAHA_API_URL=${WAHA_API_URL}
+      - WAHA_API_KEY=${WAHA_API_KEY}
+      - WAHA_SESSION=${WAHA_SESSION}
+      - ADMIN_WHATSAPP=${ADMIN_WHATSAPP}
+      - WHATSAPP_SENDER_NAME=${WHATSAPP_SENDER_NAME}
+    depends_on:
+      - mongodb
+    networks:
+      - markimagem-network
+
+  # Frontend Web
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: markimagem-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - EXPO_PUBLIC_BACKEND_URL=http://backend:8001
+    depends_on:
+      - backend
+    networks:
+      - markimagem-network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  markimagem-network:
+    driver: bridge

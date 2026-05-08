@@ -1,0 +1,21 @@
+# Dockerfile para Frontend no Railway
+FROM node:18-alpine
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar package files (da pasta frontend no repositório)
+COPY ./frontend/package.json ./frontend/yarn.lock ./
+
+# Instalar dependências
+RUN yarn install --frozen-lockfile
+
+# Copiar todo o código do frontend
+COPY ./frontend .
+
+# Expor porta (Railway usa variável $PORT dinamicamente)
+EXPOSE 3000
+
+# Comando para iniciar o servidor web
+# A variável EXPO_PUBLIC_BACKEND_URL será injetada em runtime pelo Railway
+CMD ["sh", "-c", "yarn start --web --port ${PORT:-3000}"]
