@@ -15,10 +15,18 @@ export default function PaymentPix() {
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Novos parâmetros para PIX Direto
-  const { orderId, paymentId, pixPayload, pixKey, merchantName, amount } = params;
+  const orderId = params.orderId as string || '';
+  const paymentId = params.paymentId as string || '';
+  const pixPayload = params.pixPayload as string || '';
+  const pixKey = params.pixKey as string || '';
+  const merchantName = params.merchantName as string || '';
+  const amount = params.amount as string || '0.00';
   
   // Para compatibilidade, também aceitar os parâmetros antigos
-  const qrCode = params.qrCode || pixPayload;
+  const qrCode = (params.qrCode as string) || pixPayload;
+  
+  // Debug - remover depois
+  console.log('Payment Params:', { orderId, paymentId, pixPayload, pixKey, merchantName, amount, qrCode });
 
   useEffect(() => {
     startPolling();
@@ -156,13 +164,23 @@ export default function PaymentPix() {
               <Text style={styles.sectionTitle}>PIX Copia e Cola</Text>
               <Text style={styles.codeHint}>Copie o código abaixo e cole no app do seu banco</Text>
               <View style={styles.codeContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <Text style={styles.codeText} selectable={true}>
-                    {pixPayload || qrCode}
+                {(pixPayload || qrCode) ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <Text style={styles.codeText} selectable={true}>
+                      {pixPayload || qrCode}
+                    </Text>
+                  </ScrollView>
+                ) : (
+                  <Text style={styles.codeTextError}>
+                    Código PIX não disponível. Use o QR Code acima.
                   </Text>
-                </ScrollView>
+                )}
               </View>
-              <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+              <TouchableOpacity 
+                style={[styles.copyButton, !(pixPayload || qrCode) && styles.copyButtonDisabled]} 
+                onPress={copyToClipboard}
+                disabled={!(pixPayload || qrCode)}
+              >
                 <Ionicons name="copy" size={20} color="#fff" />
                 <Text style={styles.copyButtonText}>Copiar Código PIX</Text>
               </TouchableOpacity>
@@ -314,9 +332,15 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   codeText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: '#333',
     fontFamily: 'monospace'
+  },
+  codeTextError: {
+    fontSize: 13,
+    color: '#FF3B30',
+    textAlign: 'center',
+    padding: 8
   },
   copyButton: {
     backgroundColor: '#34C759',
@@ -326,6 +350,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8
+  },
+  copyButtonDisabled: {
+    backgroundColor: '#CCC',
+    opacity: 0.7
   },
   copyButtonText: {
     color: '#fff',

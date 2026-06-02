@@ -41,15 +41,17 @@ export default function Checkout() {
         payer_email: user?.email || 'cliente@markimagemtv.com'
       });
 
+      console.log('Payment Response:', paymentResponse.data);
+
       // Prepare payment URL com dados do PIX Direto
-      const params = new URLSearchParams({
-        orderId: order.id,
-        paymentId: paymentResponse.data.payment_id,
-        pixPayload: paymentResponse.data.pix_payload,
-        pixKey: paymentResponse.data.pix_key,
-        merchantName: paymentResponse.data.merchant_name,
-        amount: paymentResponse.data.amount.toFixed(2)
-      });
+      const paymentData = paymentResponse.data;
+      const params = new URLSearchParams();
+      params.append('orderId', order.id || '');
+      params.append('paymentId', paymentData.payment_id || '');
+      params.append('pixPayload', paymentData.pix_payload || '');
+      params.append('pixKey', paymentData.pix_key || '');
+      params.append('merchantName', paymentData.merchant_name || '');
+      params.append('amount', paymentData.amount ? paymentData.amount.toFixed(2) : getFinalTotal().toFixed(2));
       
       const finalPaymentUrl = `/payment-pix?${params.toString()}`;
 
