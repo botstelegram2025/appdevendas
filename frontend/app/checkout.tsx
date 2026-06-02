@@ -35,19 +35,20 @@ export default function Checkout() {
       const orderResponse = await axios.post(`${BACKEND_URL}/api/orders`, orderData);
       const order = orderResponse.data;
 
-      // Create PIX payment - usar email padrão
+      // Create PIX payment - PIX Direto (Nubank)
       const paymentResponse = await axios.post(`${BACKEND_URL}/api/payments/create-pix`, {
         order_id: order.id,
         payer_email: user?.email || 'cliente@markimagemtv.com'
       });
 
-      // Prepare payment URL
+      // Prepare payment URL com dados do PIX Direto
       const params = new URLSearchParams({
         orderId: order.id,
-        paymentId: paymentResponse.data.payment_id.toString(),
-        qrCode: paymentResponse.data.qr_code,
-        qrCodeBase64: paymentResponse.data.qr_code_base64,
-        amount: getFinalTotal().toFixed(2)
+        paymentId: paymentResponse.data.payment_id,
+        pixPayload: paymentResponse.data.pix_payload,
+        pixKey: paymentResponse.data.pix_key,
+        merchantName: paymentResponse.data.merchant_name,
+        amount: paymentResponse.data.amount.toFixed(2)
       });
       
       const finalPaymentUrl = `/payment-pix?${params.toString()}`;

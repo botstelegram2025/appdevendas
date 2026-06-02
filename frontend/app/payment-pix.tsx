@@ -14,7 +14,11 @@ export default function PaymentPix() {
   const [paymentApproved, setPaymentApproved] = useState(false);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  const { orderId, paymentId, qrCode, qrCodeBase64, amount } = params;
+  // Novos parâmetros para PIX Direto
+  const { orderId, paymentId, pixPayload, pixKey, merchantName, amount } = params;
+  
+  // Para compatibilidade, também aceitar os parâmetros antigos
+  const qrCode = params.qrCode || pixPayload;
 
   useEffect(() => {
     startPolling();
@@ -29,7 +33,7 @@ export default function PaymentPix() {
     checkPaymentStatus();
     pollingInterval.current = setInterval(() => {
       checkPaymentStatus();
-    }, 5000);
+    }, 10000); // Verificar a cada 10 segundos
   };
 
   const checkPaymentStatus = async () => {
@@ -66,8 +70,9 @@ export default function PaymentPix() {
   };
 
   const copyToClipboard = async () => {
-    if (qrCode) {
-      await Clipboard.setStringAsync(qrCode as string);
+    const codeToCopy = pixPayload || qrCode;
+    if (codeToCopy) {
+      await Clipboard.setStringAsync(codeToCopy as string);
       Alert.alert('Copiado!', 'Código PIX copiado para a área de transferência');
     }
   };
@@ -118,13 +123,23 @@ export default function PaymentPix() {
 
             <View style={styles.qrSection}>
               <Text style={styles.sectionTitle}>Escaneie o QR Code</Text>
-              {qrCodeBase64 && (
+              {(pixPayload || qrCode) && (
                 <View style={styles.qrCodeContainer}>
                   <QRCode
-                    value={qrCode as string}
+                    value={(pixPayload || qrCode) as string}
                     size={200}
                   />
                 </View>
+              )}
+              {merchantName && (
+                <Text style={styles.merchantName}>
+                  Pagamento para: {merchantName}
+                </Text>
+              )}
+              {pixKey && (
+                <Text style={styles.pixKeyInfo}>
+                  Chave PIX: {pixKey}
+                </Text>
               )}
               <Text style={styles.qrHint}>
                 Abra o app do seu banco e escaneie o código
@@ -140,8 +155,8 @@ export default function PaymentPix() {
             <View style={styles.codeSection}>
               <Text style={styles.sectionTitle}>Código Pix Copia e Cola</Text>
               <View style={styles.codeContainer}>
-                <Text style={styles.codeText} numberOfLines={2}>
-                  {qrCode}
+                <Text style={styles.codeText} numberOfLines={3}>
+                  {pixPayload || qrCode}
                 </Text>
               </View>
               <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
@@ -162,6 +177,9 @@ export default function PaymentPix() {
                   <Text style={styles.waitingText}>
                     Aguardando confirmação do pagamento...
                   </Text>
+                  <Text style={styles.waitingSubtext}>
+                    O admin será notificado e confirmará seu pagamento em breve!
+                  </Text>
                 </View>
               )}
             </View>
@@ -174,8 +192,8 @@ export default function PaymentPix() {
                   1. Abra o app do seu banco{'\n'}
                   2. Entre em PIX → Pix Copia e Cola{'\n'}
                   3. Cole o código ou escaneie o QR Code{'\n'}
-                  4. Confirme o pagamento{'\n'}
-                  5. Aguarde a confirmação automática
+                  4. Confirme o pagamento de R$ {amount}{'\n'}
+                  5. Aguarde a confirmação pelo vendedor
                 </Text>
               </View>
             </View>
@@ -247,6 +265,19 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center'
   },
+  merchantName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  pixKeyInfo: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -315,6 +346,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center'
+  },
+  waitingSubtext: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 8
   },
   successContainer: {
     alignItems: 'center',

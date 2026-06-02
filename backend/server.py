@@ -85,10 +85,99 @@ payments_collection = db["payments"]
 whatsapp_sessions_collection = db["whatsapp_sessions"]
 business_hours_collection = db["business_hours"]
 
-# Mercado Pago credentials
-MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
-MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
+# Mercado Pago credentials (DESATIVADO - Usando PIX Direto)
+# MERCADOPAGO_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+# MERCADOPAGO_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this")
+
+# Configurações PIX Direto (Nubank)
+PIX_KEY = os.getenv("PIX_KEY", "61995021362")  # Chave PIX (telefone)
+PIX_KEY_TYPE = os.getenv("PIX_KEY_TYPE", "PHONE")  # PHONE, EMAIL, CPF, CNPJ, EVP
+PIX_MERCHANT_NAME = os.getenv("PIX_MERCHANT_NAME", "MARQUES SOUSA LIMA DE OLIVEIRA")
+PIX_MERCHANT_CITY = os.getenv("PIX_MERCHANT_CITY", "BRASILIA")
+
+def generate_pix_payload(amount: float, txid: str = None, description: str = None) -> str:
+    """
+    Gera o payload PIX (BR Code) para QR Code
+    Formato EMV conforme especificação do Banco Central do Brasil
+    """
+    import crcmod
+    
+    # Função para calcular CRC16-CCITT
+    def calculate_crc16(payload: str) -> str:
+        crc16_func = crcmod.mkCrcFun(0x11021, initCrc=0xFFFF, xorOut=0x0000)
+        crc = crc16_func(payload.encode('utf-8'))
+        return format(crc, '04X')
+    
+    # Função para criar campo TLV (Tag-Length-Value)
+    def tlv(tag: str, value: str) -> str:
+        length = str(len(value)).zfill(2)
+        return f"{tag}{length}{value}"
+    
+    # Formatar chave PIX (telefone precisa de +55)
+    pix_key = PIX_KEY
+    if PIX_KEY_TYPE == "PHONE":
+        pix_key = f"+55{PIX_KEY}" if not PIX_KEY.startswith("+") else PIX_KEY
+    
+    # Merchant Account Information (ID 26)
+    # 00: GUI do PIX (br.gov.bcb.pix)
+    # 01: Chave PIX
+    gui = tlv("00", "br.gov.bcb.pix")
+    key = tlv("01", pix_key)
+    merchant_account = tlv("26", gui + key)
+    
+    # Montar payload
+    payload_parts = []
+    
+    # 00 - Payload Format Indicator
+    payload_parts.append(tlv("00", "01"))
+    
+    # 01 - Point of Initiation Method (12 = dinâmico, pode ser usado uma vez)
+    payload_parts.append(tlv("01", "12"))
+    
+    # 26 - Merchant Account Information
+    payload_parts.append(merchant_account)
+    
+    # 52 - Merchant Category Code (0000 = não especificado)
+    payload_parts.append(tlv("52", "0000"))
+    
+    # 53 - Transaction Currency (986 = BRL)
+    payload_parts.append(tlv("53", "986"))
+    
+    # 54 - Transaction Amount
+    amount_str = f"{amount:.2f}"
+    payload_parts.append(tlv("54", amount_str))
+    
+    # 58 - Country Code
+    payload_parts.append(tlv("58", "BR"))
+    
+    # 59 - Merchant Name (máximo 25 caracteres)
+    merchant_name = PIX_MERCHANT_NAME[:25].upper()
+    payload_parts.append(tlv("59", merchant_name))
+    
+    # 60 - Merchant City (máximo 15 caracteres)
+    merchant_city = PIX_MERCHANT_CITY[:15].upper()
+    payload_parts.append(tlv("60", merchant_city))
+    
+    # 62 - Additional Data Field Template
+    if txid:
+        # 05 - Reference Label (txid)
+        txid_field = tlv("05", txid[:25])
+        payload_parts.append(tlv("62", txid_field))
+    
+    # Juntar payload sem CRC
+    payload_without_crc = "".join(payload_parts)
+    
+    # Adicionar campo CRC (63) com placeholder
+    payload_with_crc_placeholder = payload_without_crc + "6304"
+    
+    # Calcular CRC16
+    crc = calculate_crc16(payload_with_crc_placeholder)
+    
+    # Payload final
+    final_payload = payload_without_crc + "6304" + crc
+    
+    return final_payload
 
 # WAHA WhatsApp API credentials (New Multi-Instance API)
 WAHA_API_URL = os.getenv("WAHA_API_URL", "https://scintillating-growth-production.up.railway.app")
@@ -708,9 +797,11 @@ Obrigado pela compreensão! 🙏"""
     
     return {"message": "Order cancelled successfully"}
 
-# Payments Routes
+# Payments Routes - PIX DIRETO (Nubank)
 @app.post("/api/payments/create-pix")
 async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = Depends(get_current_user)):
+    """Cria pagamento PIX direto (sem gateway) e envia notificações"""
+    
     # Get order
     order = orders_collection.find_one({"_id": ObjectId(payment_data.order_id), "user_id": current_user["user_id"]})
     if not order:
@@ -719,151 +810,233 @@ async def create_pix_payment(payment_data: PaymentCreate, current_user: Dict = D
     if order["payment_status"] != "pending":
         raise HTTPException(status_code=400, detail="Order already paid or cancelled")
     
-    # Get user for CPF
+    # Get user data
     user = users_collection.find_one({"_id": ObjectId(current_user["user_id"])})
-    
-    # Try to create payment in Mercado Pago
-    # Clean CPF (remove formatting if any)
-    cpf_clean = ''.join(filter(str.isdigit, user["cpf"]))
-    
-    mp_data = {
-        "transaction_amount": float(order["final_total"]),
-        "description": f"Pedido #{payment_data.order_id[:8]}",
-        "payment_method_id": "pix",
-        "payer": {
-            "email": payment_data.payer_email or user.get("email", "cliente@example.com"),
-            "identification": {
-                "type": "CPF",
-                "number": cpf_clean
-            }
-        }
-    }
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.mercadopago.com/v1/payments",
-                json=mp_data,
-                headers={
-                    "Authorization": f"Bearer {MERCADOPAGO_ACCESS_TOKEN}",
-                    "Content-Type": "application/json",
-                    "X-Idempotency-Key": str(uuid.uuid4())
-                },
-                timeout=30.0
-            )
+        # Gerar ID único para o pagamento
+        payment_id = str(uuid.uuid4())[:8].upper()
+        txid = f"PED{payment_data.order_id[:8].upper()}"
         
-        print(f"Mercado Pago Response Status: {response.status_code}")
-        print(f"Mercado Pago Response Body: {response.text}")
+        # Gerar payload PIX
+        amount = float(order["final_total"])
+        pix_payload = generate_pix_payload(amount=amount, txid=txid)
         
-        if response.status_code in [200, 201]:
-            mp_response = response.json()
+        # Salvar pagamento no banco
+        payment_doc = {
+            "order_id": payment_data.order_id,
+            "payment_id": payment_id,
+            "payment_method": "pix_direto",
+            "status": "pending",
+            "status_detail": "awaiting_payment",
+            "pix_payload": pix_payload,
+            "amount": amount,
+            "txid": txid,
+            "pix_key": PIX_KEY,
+            "merchant_name": PIX_MERCHANT_NAME,
+            "created_at": datetime.utcnow()
+        }
+        payments_collection.insert_one(payment_doc)
+        
+        # Atualizar pedido com informações do pagamento
+        orders_collection.update_one(
+            {"_id": ObjectId(payment_data.order_id)},
+            {"$set": {
+                "payment_id": payment_id,
+                "pix_payload": pix_payload,
+                "updated_at": datetime.utcnow()
+            }}
+        )
+        
+        # Preparar dados do pedido para notificações
+        items_list = ""
+        for item in order.get("items", []):
+            items_list += f"• {item.get('name', 'Produto')} x{item.get('quantity', 1)} - R$ {item.get('price', 0):.2f}\n"
+        
+        delivery_info = order.get("delivery_info", {})
+        address_text = ""
+        if delivery_info:
+            address_text = f"""
+📍 *Endereço de Entrega:*
+{delivery_info.get('street', '')} {delivery_info.get('number', '')}
+{delivery_info.get('complement', '')}
+{delivery_info.get('neighborhood', '')} - {delivery_info.get('city', '')}/{delivery_info.get('state', '')}
+CEP: {delivery_info.get('zipCode', '')}"""
+        
+        # NOTIFICAÇÃO PARA O CLIENTE
+        client_message = f"""🛒 *PEDIDO CRIADO COM SUCESSO!*
+
+Olá {user.get('name', 'Cliente')}! 👋
+
+Seu pedido foi registrado e está aguardando pagamento.
+
+📦 *DETALHES DO PEDIDO:*
+Nº do Pedido: *{payment_data.order_id[:8].upper()}*
+
+🛍️ *Itens:*
+{items_list}
+💰 *Subtotal:* R$ {order.get('subtotal', 0):.2f}
+🚚 *Frete:* R$ {order.get('delivery_fee', 0):.2f}
+💵 *TOTAL:* R$ {amount:.2f}
+{address_text}
+
+━━━━━━━━━━━━━━━━━━━━━━
+💳 *INSTRUÇÕES DE PAGAMENTO:*
+
+1️⃣ Abra o app do seu banco
+2️⃣ Escolha a opção PIX
+3️⃣ Escaneie o QR Code ou copie o código abaixo
+4️⃣ Confirme o pagamento de *R$ {amount:.2f}*
+
+🔑 *Chave PIX (Copiar e Colar):*
+```
+{pix_payload}
+```
+
+⏳ *Após o pagamento, aguarde a confirmação.*
+Você receberá uma mensagem quando o pagamento for confirmado!
+
+━━━━━━━━━━━━━━━━━━━━━━
+Obrigado por comprar conosco! 🙏
+*MARKIMAGEM TV*"""
+
+        # NOTIFICAÇÃO PARA O ADMIN
+        admin_message = f"""🔔 *NOVO PEDIDO RECEBIDO!*
+
+📱 *Cliente:* {user.get('name', 'N/A')}
+📞 *Telefone:* {user.get('phone', 'N/A')}
+📧 *Email:* {user.get('email', 'N/A')}
+🆔 *CPF:* {user.get('cpf', 'N/A')}
+
+📦 *PEDIDO #{payment_data.order_id[:8].upper()}*
+
+🛍️ *Itens:*
+{items_list}
+💰 *Subtotal:* R$ {order.get('subtotal', 0):.2f}
+🚚 *Frete:* R$ {order.get('delivery_fee', 0):.2f}
+💵 *TOTAL:* R$ {amount:.2f}
+{address_text}
+
+━━━━━━━━━━━━━━━━━━━━━━
+⏳ *Status:* AGUARDANDO PAGAMENTO PIX
+
+🔔 Quando o pagamento for recebido na sua conta Nubank, confirme o pedido no painel admin.
+
+⏰ Pedido criado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"""
+
+        # Enviar notificações via WhatsApp
+        try:
+            # Notificar cliente
+            if user.get("phone"):
+                await send_whatsapp_notification(user["phone"], client_message)
             
-            # Get QR Code from point_of_interaction
-            poi = mp_response.get("point_of_interaction", {})
-            transaction_data = poi.get("transaction_data", {})
-            qr_code = transaction_data.get("qr_code", "")
-            qr_code_base64 = transaction_data.get("qr_code_base64", "")
-            
-            # Check if QR Code was generated
-            if not qr_code:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"QR Code não gerado. Status: {mp_response.get('status')} - {mp_response.get('status_detail', 'unknown')}"
-                )
-            
-            # Save payment (even if status is rejected, we save the QR code for reference)
-            payment_doc = {
-                "order_id": payment_data.order_id,
-                "mercadopago_id": str(mp_response["id"]),
-                "payment_method": "pix",
-                "status": mp_response["status"],
-                "status_detail": mp_response.get("status_detail", ""),
-                "qr_code": qr_code,
-                "qr_code_base64": qr_code_base64,
-                "created_at": datetime.utcnow()
-            }
-            payments_collection.insert_one(payment_doc)
-            
-            return {
-                "payment_id": str(mp_response["id"]),
-                "status": mp_response["status"],
-                "status_detail": mp_response.get("status_detail", ""),
-                "qr_code": qr_code,
-                "qr_code_base64": qr_code_base64
-            }
-        else:
-            # Log detailed error
-            print(f"Mercado Pago API Error: {response.status_code}")
-            print(f"Error details: {response.text}")
-            
-            error_data = response.json() if response.text else {}
-            error_code = error_data.get("code", "")
-            
-            if error_code == "PA_UNAUTHORIZED_RESULT_FROM_POLICIES":
-                raise HTTPException(
-                    status_code=403, 
-                    detail="Credenciais do Mercado Pago sem permissão para PIX. Por favor, ative o PIX na sua conta do Mercado Pago em: https://www.mercadopago.com.br/settings/release-options"
-                )
-            
-            raise HTTPException(status_code=400, detail=f"Mercado Pago error: {response.text}")
+            # Notificar admin
+            await send_whatsapp_notification(ADMIN_WHATSAPP_NUMBER, admin_message)
+        except Exception as e:
+            print(f"Erro ao enviar notificações WhatsApp: {e}")
+        
+        return {
+            "payment_id": payment_id,
+            "status": "pending",
+            "status_detail": "awaiting_payment",
+            "pix_payload": pix_payload,
+            "pix_key": PIX_KEY,
+            "merchant_name": PIX_MERCHANT_NAME,
+            "amount": amount,
+            "message": "Realize o pagamento via PIX e aguarde a confirmação"
+        }
+        
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Mercado Pago exception: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Payment processing error: {str(e)}")
+        print(f"Erro ao criar pagamento PIX: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar pagamento: {str(e)}")
 
 @app.get("/api/payments/{payment_id}/status")
 async def check_payment_status(payment_id: str, current_user: Dict = Depends(get_current_user)):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.mercadopago.com/v1/payments/{payment_id}",
-            headers={"Authorization": f"Bearer {MERCADOPAGO_ACCESS_TOKEN}"},
-            timeout=30.0
-        )
+    """Verifica status do pagamento PIX"""
+    # Buscar pagamento pelo payment_id ou order_id
+    payment = payments_collection.find_one({"payment_id": payment_id})
+    if not payment:
+        payment = payments_collection.find_one({"order_id": payment_id})
     
-    if response.status_code != 200:
-        raise HTTPException(status_code=400, detail="Payment not found")
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado")
     
-    mp_response = response.json()
-    status = mp_response["status"]
+    return {
+        "status": payment.get("status", "pending"),
+        "status_detail": payment.get("status_detail", "awaiting_payment"),
+        "payment_method": payment.get("payment_method", "pix_direto"),
+        "amount": payment.get("amount", 0),
+        "message": "Aguardando confirmação do pagamento" if payment.get("status") == "pending" else "Pagamento confirmado"
+    }
+
+@app.post("/api/admin/payments/{payment_id}/confirm")
+async def confirm_payment_admin(payment_id: str, current_user: Dict = Depends(get_admin_user)):
+    """Admin confirma recebimento do PIX manualmente"""
     
-    # Update payment and order status
-    payment = payments_collection.find_one({"mercadopago_id": payment_id})
-    if payment:
-        old_status = payment.get("status", "pending")
-        payments_collection.update_one(
-            {"mercadopago_id": payment_id},
-            {"$set": {"status": status}}
-        )
-        
-        if status == "approved" and old_status != "approved":
-            # Update order
-            orders_collection.update_one(
-                {"_id": ObjectId(payment["order_id"])},
-                {"$set": {"payment_status": "paid", "delivery_status": "processing", "updated_at": datetime.utcnow()}}
-            )
-            
-            # Get order and user info for notifications
-            order = orders_collection.find_one({"_id": ObjectId(payment["order_id"])})
-            user = users_collection.find_one({"_id": ObjectId(order["user_id"])}) if order else None
-            
-            if order and user:
-                # Send notifications using the new helper function
-                await send_payment_approved_notifications(order, user)
+    # Buscar pagamento pelo payment_id ou order_id
+    payment = payments_collection.find_one({"payment_id": payment_id})
+    if not payment:
+        payment = payments_collection.find_one({"order_id": payment_id})
     
-    return {"status": status}
+    if not payment:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado")
+    
+    if payment.get("status") == "approved":
+        raise HTTPException(status_code=400, detail="Pagamento já foi confirmado")
+    
+    # Atualizar status do pagamento
+    payments_collection.update_one(
+        {"_id": payment["_id"]},
+        {"$set": {
+            "status": "approved",
+            "status_detail": "confirmed_by_admin",
+            "confirmed_at": datetime.utcnow(),
+            "confirmed_by": current_user["user_id"]
+        }}
+    )
+    
+    # Atualizar status do pedido
+    orders_collection.update_one(
+        {"_id": ObjectId(payment["order_id"])},
+        {"$set": {
+            "payment_status": "paid",
+            "delivery_status": "processing",
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    # Buscar dados do pedido e usuário para notificação
+    order = orders_collection.find_one({"_id": ObjectId(payment["order_id"])})
+    user = users_collection.find_one({"_id": ObjectId(order["user_id"])}) if order else None
+    
+    if order and user:
+        # Enviar notificação de pagamento confirmado
+        await send_payment_approved_notifications(order, user)
+    
+    return {
+        "success": True,
+        "message": "Pagamento confirmado com sucesso",
+        "order_id": payment["order_id"]
+    }
 
 @app.post("/api/payments/{payment_id}/simulate-approval")
 async def simulate_payment_approval(payment_id: str, current_user: Dict = Depends(get_current_user)):
     """Endpoint para simular aprovação de pagamento (apenas para testes)"""
-    payment = payments_collection.find_one({"mercadopago_id": payment_id})
+    payment = payments_collection.find_one({"payment_id": payment_id})
+    if not payment:
+        payment = payments_collection.find_one({"order_id": payment_id})
+    
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     
     # Update payment status
     payments_collection.update_one(
-        {"mercadopago_id": payment_id},
-        {"$set": {"status": "approved"}}
+        {"_id": payment["_id"]},
+        {"$set": {"status": "approved", "status_detail": "simulated"}}
     )
     
     # Update order status
