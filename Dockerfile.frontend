@@ -11,7 +11,7 @@ COPY . .
 WORKDIR /workspace/frontend
 
 # Instalar dependências
-RUN yarn install --frozen-lockfile
+RUN yarn install
 
 # Expor porta
 EXPOSE 3000
