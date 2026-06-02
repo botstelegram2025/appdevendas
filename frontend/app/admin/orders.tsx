@@ -39,6 +39,7 @@ export default function OrdersManagement() {
   const [filter, setFilter] = useState('all');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -167,6 +168,37 @@ export default function OrdersManagement() {
   const handleCancelOrder = (order: Order) => {
     setOrderToCancel(order);
     setShowCancelModal(true);
+  };
+
+  const confirmPayment = async (orderId: string) => {
+    setConfirmingPayment(true);
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/admin/payments/${orderId}/confirm`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        }
+      );
+      Alert.alert('Sucesso', 'Pagamento confirmado! Cliente notificado via WhatsApp.');
+      loadOrders();
+      // Atualizar o pedido selecionado
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({
+          ...selectedOrder,
+          payment_status: 'paid',
+          delivery_status: 'processing'
+        });
+      }
+    } catch (error: any) {
+      console.error('Error confirming payment:', error);
+      const errorMsg = error.response?.data?.detail || 'Não foi possível confirmar o pagamento';
+      Alert.alert('Erro', errorMsg);
+    } finally {
+      setConfirmingPayment(false);
+    }
   };
 
   const confirmCancelOrder = async () => {
@@ -379,26 +411,30 @@ export default function OrdersManagement() {
 
           {/* Botões de Ação */}
           <View style={styles.actionsCard}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.statusButton]}
-              onPress={() => handleStatusChange(selectedOrder)}
-              disabled={updatingStatus}
-            >
-              {updatingStatus ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="swap-horizontal" size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Alterar Status de Entrega</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Botão de Confirmar Pagamento - só aparece se pagamento estiver pendente */}
+            {selectedOrder.payment_status === 'pending' && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.confirmPaymentButton]}
+                onPress={() => confirmPayment(selectedOrder.id)}
+                disabled={confirmingPayment || updatingStatus}
+              >
+                {confirmingPayment ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="wallet" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Confirmar Pagamento PIX</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
 
-            {selectedOrder.delivery_status !== 'delivered' && selectedOrder.payment_status === 'paid' && (
+            {/* Botão de Confirmar Entrega - só aparece se pagamento confirmado e não entregue */}
+            {selectedOrder.payment_status === 'paid' && selectedOrder.delivery_status !== 'delivered' && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.deliverButton]}
                 onPress={() => updateDeliveryStatus(selectedOrder.id, 'delivered')}
-                disabled={updatingStatus}
+                disabled={updatingStatus || confirmingPayment}
               >
                 {updatingStatus ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -411,12 +447,27 @@ export default function OrdersManagement() {
               </TouchableOpacity>
             )}
 
+            <TouchableOpacity
+              style={[styles.actionButton, styles.statusButton]}
+              onPress={() => handleStatusChange(selectedOrder)}
+              disabled={updatingStatus || confirmingPayment}
+            >
+              {updatingStatus ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="swap-horizontal" size={20} color="#fff" />
+                  <Text style={styles.actionButtonText}>Alterar Status de Entrega</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             {/* Botão de cancelar pedido */}
-            {selectedOrder.payment_status !== 'cancelled' && (
+            {selectedOrder.payment_status !== 'cancelled' && selectedOrder.delivery_status !== 'delivered' && (
               <TouchableOpacity
                 style={[styles.actionButton, styles.cancelActionButton]}
                 onPress={() => handleCancelOrder(selectedOrder)}
-                disabled={updatingStatus}
+                disabled={updatingStatus || confirmingPayment}
               >
                 {updatingStatus ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -896,6 +947,9 @@ const styles = StyleSheet.create({
   },
   deliverButton: {
     backgroundColor: '#34C759'
+  },
+  confirmPaymentButton: {
+    backgroundColor: '#FF9500'
   },
   cancelActionButton: {
     backgroundColor: '#FF3B30'
