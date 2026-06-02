@@ -153,15 +153,18 @@ export default function PaymentPix() {
             </View>
 
             <View style={styles.codeSection}>
-              <Text style={styles.sectionTitle}>Código Pix Copia e Cola</Text>
+              <Text style={styles.sectionTitle}>PIX Copia e Cola</Text>
+              <Text style={styles.codeHint}>Copie o código abaixo e cole no app do seu banco</Text>
               <View style={styles.codeContainer}>
-                <Text style={styles.codeText} numberOfLines={3}>
-                  {pixPayload || qrCode}
-                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <Text style={styles.codeText} selectable={true}>
+                    {pixPayload || qrCode}
+                  </Text>
+                </ScrollView>
               </View>
               <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
                 <Ionicons name="copy" size={20} color="#fff" />
-                <Text style={styles.copyButtonText}>Copiar Código</Text>
+                <Text style={styles.copyButtonText}>Copiar Código PIX</Text>
               </TouchableOpacity>
             </View>
 
@@ -297,6 +300,12 @@ const styles = StyleSheet.create({
   codeSection: {
     backgroundColor: '#fff',
     padding: 24
+  },
+  codeHint: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16
   },
   codeContainer: {
     backgroundColor: '#F5F5F5',
