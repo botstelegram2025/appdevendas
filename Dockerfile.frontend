@@ -1,20 +1,38 @@
-# Dockerfile simplificado para Frontend no Railway
-FROM node:20-alpine
+# Dockerfile para Frontend Expo Web - BUILD DE PRODUÇÃO
+FROM node:20-alpine AS builder
 
-# Definir diretório de trabalho
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /workspace
 
-# Copiar TUDO do repositório primeiro
+# Copiar tudo
 COPY . .
 
-# Agora entrar na pasta frontend e trabalhar lá
 WORKDIR /workspace/frontend
 
-# Instalar dependências
-RUN yarn install --frozen-lockfile
+# Configurar variável de ambiente para o build
+ENV EXPO_PUBLIC_BACKEND_URL=https://appdevendas-production.up.railway.app
+RUN echo "EXPO_PUBLIC_BACKEND_URL=https://appdevendas-production.up.railway.app" > .env
 
-# Expor porta
+# Instalar dependências (sem frozen-lockfile para evitar erro de lock desatualizado)
+RUN yarn install
+
+# Build de produção
+ENV NODE_ENV=production
+RUN npx expo export -p web
+
+# Estágio de produção - imagem leve
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN npm install -g serve
+
+COPY --from=builder /workspace/frontend/dist /app/dist
+
+# SPA routing config
+RUN echo '{"rewrites":[{"source":"**","destination":"/index.html"}]}' > /app/serve.json
+
 EXPOSE 3000
 
-# Comando para iniciar o servidor web
-CMD ["sh", "-c", "yarn start --web --port ${PORT:-3000}"]
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]

@@ -1,0 +1,17 @@
+# nixpacks.toml - Configuração de build para Railway
+# Garante que o frontend seja buildado como arquivos estáticos
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "yarn"]
+
+[phases.install]
+cmds = ["yarn install"]
+
+[phases.build]
+cmds = [
+  "echo 'EXPO_PUBLIC_BACKEND_URL=https://appdevendas-production.up.railway.app' > .env",
+  "yarn build"
+]
+
+[start]
+cmd = "npx serve -s dist -l $PORT"
