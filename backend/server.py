@@ -1617,7 +1617,16 @@ async def send_whatsapp_notification(number: str, message: str):
             print(f"⚠️ WhatsApp não conectado. Status: {instance_info.get('status')}")
             return False
         
-        instance_name = instance_info.get("instance_name", "markimagemtv1")
+        # Verificar se o número conectado é o autorizado
+        connected_phone = instance_info.get("phone_number", "")
+        if WHATSAPP_ALLOWED_NUMBER and connected_phone:
+            clean_connected = connected_phone.replace("+", "").replace(" ", "").replace("-", "")
+            clean_allowed = WHATSAPP_ALLOWED_NUMBER.replace("+", "").replace(" ", "").replace("-", "")
+            if clean_allowed not in clean_connected and clean_connected not in clean_allowed:
+                print(f"🚫 Envio BLOQUEADO: Número conectado ({connected_phone}) não é o autorizado ({WHATSAPP_ALLOWED_NUMBER})")
+                return False
+        
+        instance_name = instance_info.get("instance_name", f"{WHATSAPP_INSTANCE_PREFIX}1")
         
         # Obter token válido
         token = await get_whatsapp_api_token()
@@ -1736,6 +1745,46 @@ async def get_whatsapp_status():
                 clean_phone = phone.replace("+", "").replace(" ", "").replace("-", "")
                 clean_allowed = WHATSAPP_ALLOWED_NUMBER.replace("+", "").replace(" ", "").replace("-", "")
                 is_authorized = clean_allowed in clean_phone or clean_phone in clean_allowed
+                
+                # Se NÃO for autorizado, desconectar automaticamente
+                if not is_authorized and phone:
+                    print(f"⚠️ BLOQUEADO: Número não autorizado tentou conectar: {phone}")
+                    print(f"📱 Número autorizado: {WHATSAPP_ALLOWED_NUMBER}")
+                    
+                    # Desconectar instância não autorizada
+                    try:
+                        token = await get_whatsapp_api_token()
+                        headers = {"Authorization": f"Bearer {token}"}
+                        async with httpx.AsyncClient() as client:
+                            # Buscar e deletar a instância
+                            response = await client.get(
+                                f"{WAHA_API_URL}/api/instances",
+                                headers=headers,
+                                timeout=10.0
+                            )
+                            if response.status_code == 200:
+                                instances = response.json()
+                                for inst in instances:
+                                    if inst.get("name") == instance_info.get("instance_name"):
+                                        await client.delete(
+                                            f"{WAHA_API_URL}/api/instances/{inst.get('id')}",
+                                            headers=headers,
+                                            timeout=5.0
+                                        )
+                                        print(f"🔒 Instância com número não autorizado REMOVIDA: {phone}")
+                                        break
+                    except Exception as e:
+                        print(f"Erro ao desconectar número não autorizado: {e}")
+                    
+                    return {
+                        "connected": False,
+                        "hasQR": False,
+                        "status": "UNAUTHORIZED",
+                        "message": f"Número {display_phone} não autorizado. Apenas o número {WHATSAPP_ALLOWED_NUMBER} pode conectar.",
+                        "blocked_number": phone,
+                        "allowed_number": WHATSAPP_ALLOWED_NUMBER,
+                        "is_authorized": False
+                    }
             
             return {
                 "connected": True,
@@ -1754,7 +1803,7 @@ async def get_whatsapp_status():
                 "status": "WAITING_QR",
                 "instance_name": instance_info.get("instance_name"),
                 "allowed_number": WHATSAPP_ALLOWED_NUMBER,
-                "message": f"Escaneie o QR Code com o número {WHATSAPP_ALLOWED_NUMBER}"
+                "message": f"Escaneie o QR Code APENAS com o número {WHATSAPP_ALLOWED_NUMBER}"
             }
         else:
             return {
