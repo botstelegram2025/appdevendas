@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator, Modal, Switch, Platform, Pressable } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator, Modal, Switch, Platform, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { BACKEND_URL } from '../../config';
 
@@ -21,6 +22,7 @@ interface Product {
   required_fields: string[];
   discount_rules: Array<{ min_quantity: number; discount_percent: number }>;
   active: boolean;
+  image_url?: string;
 }
 
 const AVAILABLE_FIELDS = ['MAC', 'CHAVE OTP', 'E-mail', 'Senha do app', 'Device ID', 'Usuário', 'Login'];
@@ -43,8 +45,10 @@ export default function ProductsManagement() {
     type: 'activation',
     required_fields: [] as string[],
     discount_rules: [] as Array<{ min_quantity: number; discount_percent: number }>,
-    active: true
+    active: true,
+    image_url: ''
   });
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -76,9 +80,15 @@ export default function ProductsManagement() {
 
     try {
       const payload = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
         price: parseFloat(formData.price),
-        active: true
+        category_id: formData.category_id,
+        type: formData.type,
+        required_fields: formData.required_fields,
+        discount_rules: formData.discount_rules,
+        active: true,
+        image: formData.image_url || null  // Enviar como 'image' para o backend
       };
 
       if (editingProduct) {
@@ -98,6 +108,7 @@ export default function ProductsManagement() {
 
   const resetForm = () => {
     setEditingProduct(null);
+    setImageUri(null);
     setFormData({
       name: '',
       description: '',
@@ -106,12 +117,47 @@ export default function ProductsManagement() {
       type: 'activation',
       required_fields: [],
       discount_rules: [],
-      active: true
+      active: true,
+      image_url: ''
     });
+  };
+
+  const pickImage = async () => {
+    try {
+      // Solicitar permissão
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria para selecionar imagens.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setImageUri(asset.uri);
+        if (asset.base64) {
+          setFormData(prev => ({
+            ...prev,
+            image_url: `data:image/jpeg;base64,${asset.base64}`
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao selecionar imagem:', error);
+      Alert.alert('Erro', 'Não foi possível selecionar a imagem');
+    }
   };
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    setImageUri(product.image_url || null);
     setFormData({
       name: product.name,
       description: product.description,
@@ -120,7 +166,8 @@ export default function ProductsManagement() {
       type: product.type,
       required_fields: product.required_fields || [],
       discount_rules: product.discount_rules || [],
-      active: product.active
+      active: product.active,
+      image_url: product.image_url || ''
     });
     setModalVisible(true);
   };
@@ -241,6 +288,39 @@ export default function ProductsManagement() {
             </View>
 
             <ScrollView>
+              {/* Seção de Imagem */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Imagem do Produto</Text>
+                <TouchableOpacity style={styles.imagePickerContainer} onPress={pickImage}>
+                  {imageUri || formData.image_url ? (
+                    <Image 
+                      source={{ uri: imageUri || formData.image_url }} 
+                      style={styles.productImagePreview} 
+                    />
+                  ) : (
+                    <View style={styles.imagePlaceholder}>
+                      <Ionicons name="image" size={48} color="#999" />
+                      <Text style={styles.imagePlaceholderText}>Toque para adicionar imagem</Text>
+                    </View>
+                  )}
+                  <View style={styles.imagePickerOverlay}>
+                    <Ionicons name="camera" size={24} color="#fff" />
+                  </View>
+                </TouchableOpacity>
+                {(imageUri || formData.image_url) && (
+                  <TouchableOpacity 
+                    style={styles.removeImageButton}
+                    onPress={() => {
+                      setImageUri(null);
+                      setFormData(prev => ({ ...prev, image_url: '' }));
+                    }}
+                  >
+                    <Ionicons name="trash" size={16} color="#FF3B30" />
+                    <Text style={styles.removeImageText}>Remover imagem</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Nome *</Text>
                 <TextInput
@@ -692,5 +772,55 @@ const styles = StyleSheet.create({
   },
   deleteModalButtonDisabled: {
     opacity: 0.6
+  },
+  // Estilos do Image Picker
+  imagePickerContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+    position: 'relative'
+  },
+  productImagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover'
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0'
+  },
+  imagePlaceholderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#999'
+  },
+  imagePickerOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  removeImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    padding: 8,
+    gap: 6
+  },
+  removeImageText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '500'
   }
 });

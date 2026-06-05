@@ -1,9 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  SafeAreaView, 
+  ScrollView, 
+  ActivityIndicator, 
+  Alert,
+  Image,
+  TextInput,
+  Dimensions
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { BACKEND_URL } from '../../config';
+import { useCartStore } from '../../stores/cartStore';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2;
 
 interface Category {
   id: string;
@@ -18,131 +35,237 @@ interface Product {
   price: number;
   type: string;
   category_id: string;
+  image_url?: string;
 }
 
 export default function Products() {
   const router = useRouter();
+  const cartItems = useCartStore((state) => state.items);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>('all');
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'popular'>('name');
 
   useEffect(() => {
-    loadCategories();
+    loadData();
   }, []);
 
   useEffect(() => {
-    if (selectedCategory) {
-      loadProducts(selectedCategory);
-    }
-  }, [selectedCategory]);
+    filterProducts();
+  }, [selectedCategory, searchQuery, sortBy, allProducts]);
 
-  const loadCategories = async () => {
+  const loadData = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/categories`);
-      setCategories(response.data);
-      if (response.data.length > 0) {
-        setSelectedCategory(response.data[0].id);
-      }
+      setLoading(true);
+      const [catRes, prodRes] = await Promise.all([
+        axios.get(`${BACKEND_URL}/api/categories`),
+        axios.get(`${BACKEND_URL}/api/products`)
+      ]);
+      setCategories(catRes.data);
+      setAllProducts(prodRes.data);
+      setProducts(prodRes.data);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar as categorias');
+      Alert.alert('Erro', 'Não foi possível carregar os dados');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadProducts = async (categoryId: string) => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${BACKEND_URL}/api/products?category_id=${categoryId}`);
-      setProducts(response.data);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível carregar os produtos');
-    } finally {
-      setLoading(false);
+  const filterProducts = () => {
+    let filtered = [...allProducts];
+    
+    // Filtrar por categoria
+    if (selectedCategory && selectedCategory !== 'all') {
+      filtered = filtered.filter(p => p.category_id === selectedCategory);
     }
+    
+    // Filtrar por busca
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query)
+      );
+    }
+    
+    // Ordenar
+    if (sortBy === 'name') {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'price') {
+      filtered.sort((a, b) => a.price - b.price);
+    }
+    
+    setProducts(filtered);
+  };
+
+  const getCategoryName = (categoryId: string) => {
+    const cat = categories.find(c => c.id === categoryId);
+    return cat?.name || '';
   };
 
   if (loading && categories.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#6366F1" />
+        <Text style={styles.loadingText}>Carregando produtos...</Text>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Produtos</Text>
+      {/* Header com gradiente */}
+      <LinearGradient
+        colors={['#1E1E2E', '#2D2D44']}
+        style={styles.header}
+      >
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Catálogo</Text>
+            <Text style={styles.headerSubtitle}>{products.length} produtos disponíveis</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.cartButton}
+            onPress={() => router.push('/(tabs)/cart')}
+          >
+            <Ionicons name="bag-handle" size={24} color="#fff" />
+            {cartItems.length > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Barra de busca */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#9CA3AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar produtos..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
+
+      {/* Filtros */}
+      <View style={styles.filtersSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filtersRow}>
+            <TouchableOpacity
+              style={[styles.filterChip, selectedCategory === 'all' && styles.filterChipActive]}
+              onPress={() => setSelectedCategory('all')}
+            >
+              <Text style={[styles.filterText, selectedCategory === 'all' && styles.filterTextActive]}>
+                Todos
+              </Text>
+            </TouchableOpacity>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[styles.filterChip, selectedCategory === category.id && styles.filterChipActive]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <Text style={styles.filterIcon}>{category.icon}</Text>
+                <Text style={[styles.filterText, selectedCategory === category.id && styles.filterTextActive]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        {/* Ordenação */}
+        <View style={styles.sortRow}>
+          <TouchableOpacity
+            style={[styles.sortButton, sortBy === 'name' && styles.sortButtonActive]}
+            onPress={() => setSortBy('name')}
+          >
+            <Text style={[styles.sortText, sortBy === 'name' && styles.sortTextActive]}>A-Z</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.sortButton, sortBy === 'price' && styles.sortButtonActive]}
+            onPress={() => setSortBy('price')}
+          >
+            <Text style={[styles.sortText, sortBy === 'price' && styles.sortTextActive]}>Preço</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {categories.length === 0 ? (
+      {/* Grid de Produtos */}
+      {products.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cart-outline" size={64} color="#CCC" />
-          <Text style={styles.emptyText}>Nenhum produto disponível</Text>
-          <Text style={styles.emptySubtext}>Os produtos aparecerão aqui quando forem cadastrados</Text>
+          <Ionicons name="cube-outline" size={80} color="#4B5563" />
+          <Text style={styles.emptyTitle}>Nenhum produto encontrado</Text>
+          <Text style={styles.emptySubtitle}>
+            {searchQuery ? 'Tente buscar por outro termo' : 'Os produtos aparecerão aqui'}
+          </Text>
         </View>
       ) : (
-        <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-            <View style={styles.categoriesContainer}>
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.categoryChip,
-                    selectedCategory === category.id && styles.categoryChipActive
-                  ]}
-                  onPress={() => setSelectedCategory(category.id)}
+        <ScrollView style={styles.productsScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.productsGrid}>
+            {products.map((product) => (
+              <TouchableOpacity
+                key={product.id}
+                style={styles.productCard}
+                onPress={() => router.push({ pathname: '/product-detail', params: { productId: product.id } })}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#2D2D44', '#1E1E2E']}
+                  style={styles.cardGradient}
                 >
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      selectedCategory === category.id && styles.categoryTextActive
-                    ]}
-                  >
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+                  {/* Imagem do produto */}
+                  <View style={styles.imageContainer}>
+                    {product.image_url ? (
+                      <Image
+                        source={{ uri: product.image_url }}
+                        style={styles.productImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.placeholderImage}>
+                        <Ionicons name="cube" size={48} color="#6366F1" />
+                      </View>
+                    )}
+                  </View>
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#007AFF" />
-            </View>
-          ) : (
-            <ScrollView style={styles.productsContainer}>
-              {products.length === 0 ? (
-                <View style={styles.emptyProducts}>
-                  <Text style={styles.emptyText}>Nenhum produto nesta categoria</Text>
-                </View>
-              ) : (
-                products.map((product) => (
-                  <TouchableOpacity 
-                    key={product.id} 
-                    style={styles.productCard}
-                    onPress={() => router.push({ pathname: '/product-detail', params: { productId: product.id } })}
-                  >
-                    <View style={styles.productInfo}>
-                      <Text style={styles.productName}>{product.name}</Text>
-                      <Text style={styles.productDescription} numberOfLines={2}>
-                        {product.description}
-                      </Text>
-                      <Text style={styles.productPrice}>
-                        R$ {product.price.toFixed(2)}
-                      </Text>
+                  {/* Info do produto */}
+                  <View style={styles.cardContent}>
+                    <Text style={styles.productName} numberOfLines={2}>
+                      {product.name}
+                    </Text>
+                    
+                    <View style={styles.badgeContainer}>
+                      <View style={styles.badge}>
+                        <Ionicons name="flash" size={12} color="#10B981" />
+                        <Text style={styles.badgeText}>Disponível</Text>
+                      </View>
                     </View>
-                    <Ionicons name="chevron-forward" size={24} color="#CCC" />
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          )}
-        </>
+
+                    <View style={styles.priceRow}>
+                      <Text style={styles.price}>R$ {product.price.toFixed(2)}</Text>
+                      <View style={styles.addButton}>
+                        <Ionicons name="add" size={20} color="#fff" />
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={{ height: 100 }} />
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -151,56 +274,134 @@ export default function Products() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5'
+    backgroundColor: '#111827'
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111827'
+  },
+  loadingText: {
+    color: '#9CA3AF',
+    marginTop: 12,
+    fontSize: 14
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
+    paddingTop: 10
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000'
-  },
-  categoriesScroll: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
-  },
-  categoriesContainer: {
+  headerTop: {
     flexDirection: 'row',
-    padding: 16,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff'
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 4
+  },
+  cartButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(99, 102, 241, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold'
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
     gap: 12
   },
-  categoryChip: {
+  searchInput: {
+    flex: 1,
+    height: 48,
+    color: '#fff',
+    fontSize: 16
+  },
+  filtersSection: {
+    backgroundColor: '#1F2937',
+    paddingVertical: 12
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8
+  },
+  filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F0F0F0',
-    gap: 8
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    gap: 6
   },
-  categoryChipActive: {
-    backgroundColor: '#007AFF'
+  filterChipActive: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1'
   },
-  categoryIcon: {
-    fontSize: 18
+  filterIcon: {
+    fontSize: 16
   },
-  categoryText: {
+  filterText: {
+    color: '#9CA3AF',
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666'
+    fontWeight: '500'
   },
-  categoryTextActive: {
+  filterTextActive: {
     color: '#fff'
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
+  sortRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginTop: 12
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)'
+  },
+  sortButtonActive: {
+    backgroundColor: 'rgba(99, 102, 241, 0.3)'
+  },
+  sortText: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  sortTextActive: {
+    color: '#A5B4FC'
   },
   emptyContainer: {
     flex: 1,
@@ -208,52 +409,99 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40
   },
-  emptyProducts: {
-    padding: 40,
-    alignItems: 'center'
+  emptyTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 16,
-    textAlign: 'center'
-  },
-  emptySubtext: {
+  emptySubtitle: {
+    color: '#6B7280',
     fontSize: 14,
-    color: '#999',
     marginTop: 8,
     textAlign: 'center'
   },
-  productsContainer: {
-    flex: 1,
-    padding: 16
-  },
-  productCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  productInfo: {
+  productsScroll: {
     flex: 1
   },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 16
   },
-  productDescription: {
+  productCard: {
+    width: CARD_WIDTH,
+    borderRadius: 16,
+    overflow: 'hidden'
+  },
+  cardGradient: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
+  },
+  imageContainer: {
+    width: '100%',
+    height: 120,
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  productImage: {
+    width: '100%',
+    height: '100%'
+  },
+  placeholderImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)'
+  },
+  cardContent: {
+    padding: 12
+  },
+  productName: {
+    color: '#fff',
     fontSize: 14,
-    color: '#666',
+    fontWeight: '600',
+    marginBottom: 8,
+    height: 36
+  },
+  badgeContainer: {
     marginBottom: 8
   },
-  productPrice: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF'
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start'
+  },
+  badgeText: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: '600'
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  price: {
+    color: '#A5B4FC',
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#6366F1',
+    justifyContent: 'center',
+    alignItems: 'center'
   }
 });

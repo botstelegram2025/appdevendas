@@ -518,6 +518,9 @@ async def get_products(category_id: Optional[str] = None):
     for prod in products:
         prod["id"] = str(prod["_id"])
         del prod["_id"]
+        # Converter campo 'image' para 'image_url' para compatibilidade frontend
+        if prod.get("image"):
+            prod["image_url"] = prod["image"]
     return products
 
 @app.get("/api/products/{product_id}")
@@ -528,6 +531,9 @@ async def get_product(product_id: str):
     
     product["id"] = str(product["_id"])
     del product["_id"]
+    # Converter campo 'image' para 'image_url' para compatibilidade frontend
+    if product.get("image"):
+        product["image_url"] = product["image"]
     return product
 
 @app.post("/api/products")
