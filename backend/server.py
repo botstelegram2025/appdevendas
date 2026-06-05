@@ -1545,25 +1545,11 @@ async def get_or_create_whatsapp_instance():
                 for inst in my_instances:
                     if inst.get("status") == "connected":
                         phone = inst.get("phone_number", "")
-                        # Verificar se é o número autorizado
-                        if phone and WHATSAPP_ALLOWED_NUMBER not in phone:
-                            print(f"⚠️ Número não autorizado conectado: {phone}. Autorizado: {WHATSAPP_ALLOWED_NUMBER}")
-                            # Desconectar instância não autorizada
-                            try:
-                                await client.delete(
-                                    f"{WAHA_API_URL}/api/instances/{inst.get('id')}",
-                                    headers=headers,
-                                    timeout=5.0
-                                )
-                                print(f"🔒 Instância com número não autorizado removida")
-                            except:
-                                pass
-                            continue
-                        
                         return {
                             "instance_name": inst.get("name"),
                             "status": "connected",
-                            "phone_number": phone
+                            "phone_number": phone,
+                            "instance_id": inst.get("id")
                         }
                 
                 # Procurar instância esperando QR
@@ -1572,7 +1558,8 @@ async def get_or_create_whatsapp_instance():
                         return {
                             "instance_name": inst.get("name"),
                             "status": "waiting_qr",
-                            "qr_code": inst.get("qr_code")
+                            "qr_code": inst.get("qr_code"),
+                            "instance_id": inst.get("id")
                         }
                 
                 # Limpar instâncias desconectadas antes de criar nova
@@ -1742,6 +1729,14 @@ async def get_whatsapp_status():
                 if len(clean) >= 12:
                     display_phone = f"+{clean[:2]} ({clean[2:4]}) {clean[4:9]}-{clean[9:]}"
             
+            # Verificar se é o número autorizado
+            is_authorized = True  # Por padrão autorizado
+            if WHATSAPP_ALLOWED_NUMBER:
+                # Normalizar números para comparação
+                clean_phone = phone.replace("+", "").replace(" ", "").replace("-", "")
+                clean_allowed = WHATSAPP_ALLOWED_NUMBER.replace("+", "").replace(" ", "").replace("-", "")
+                is_authorized = clean_allowed in clean_phone or clean_phone in clean_allowed
+            
             return {
                 "connected": True,
                 "hasQR": False,
@@ -1750,7 +1745,7 @@ async def get_whatsapp_status():
                 "phone_number": phone,
                 "phone_display": display_phone,
                 "allowed_number": WHATSAPP_ALLOWED_NUMBER,
-                "is_authorized": WHATSAPP_ALLOWED_NUMBER in phone if phone else False
+                "is_authorized": is_authorized
             }
         elif instance_info.get("status") == "waiting_qr":
             return {
@@ -1758,7 +1753,8 @@ async def get_whatsapp_status():
                 "hasQR": True,
                 "status": "WAITING_QR",
                 "instance_name": instance_info.get("instance_name"),
-                "allowed_number": WHATSAPP_ALLOWED_NUMBER
+                "allowed_number": WHATSAPP_ALLOWED_NUMBER,
+                "message": f"Escaneie o QR Code com o número {WHATSAPP_ALLOWED_NUMBER}"
             }
         else:
             return {
