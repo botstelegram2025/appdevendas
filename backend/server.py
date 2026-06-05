@@ -96,6 +96,11 @@ PIX_KEY_TYPE = os.getenv("PIX_KEY_TYPE", "PHONE")  # PHONE, EMAIL, CPF, CNPJ, EV
 PIX_MERCHANT_NAME = os.getenv("PIX_MERCHANT_NAME", "MARQUES SOUSA LIMA DE OLIVEIRA")
 PIX_MERCHANT_CITY = os.getenv("PIX_MERCHANT_CITY", "BRASILIA")
 
+# Configurações de isolamento WhatsApp
+WHATSAPP_INSTANCE_PREFIX = os.getenv("WHATSAPP_INSTANCE_PREFIX", "mkimg_")
+WHATSAPP_ALLOWED_NUMBER = os.getenv("WHATSAPP_ALLOWED_NUMBER", "556195179918")
+print(f"🔒 WhatsApp - Prefixo: {WHATSAPP_INSTANCE_PREFIX}, Número autorizado: {WHATSAPP_ALLOWED_NUMBER}")
+
 def generate_pix_payload(amount: float, txid: str = None, description: str = None) -> str:
     """
     Gera o payload PIX (BR Code) para QR Code
@@ -1533,20 +1538,36 @@ async def get_or_create_whatsapp_instance():
             if response.status_code == 200:
                 instances = response.json()
                 
-                # Filtrar instâncias markimagemtv
-                markimagem_instances = [i for i in instances if i.get("name", "").startswith("markimagemtv")]
+                # Filtrar instâncias deste serviço (usando prefixo)
+                my_instances = [i for i in instances if i.get("name", "").startswith(WHATSAPP_INSTANCE_PREFIX)]
                 
                 # Procurar instância conectada
-                for inst in markimagem_instances:
+                for inst in my_instances:
                     if inst.get("status") == "connected":
+                        phone = inst.get("phone_number", "")
+                        # Verificar se é o número autorizado
+                        if phone and WHATSAPP_ALLOWED_NUMBER not in phone:
+                            print(f"⚠️ Número não autorizado conectado: {phone}. Autorizado: {WHATSAPP_ALLOWED_NUMBER}")
+                            # Desconectar instância não autorizada
+                            try:
+                                await client.delete(
+                                    f"{WAHA_API_URL}/api/instances/{inst.get('id')}",
+                                    headers=headers,
+                                    timeout=5.0
+                                )
+                                print(f"🔒 Instância com número não autorizado removida")
+                            except:
+                                pass
+                            continue
+                        
                         return {
                             "instance_name": inst.get("name"),
                             "status": "connected",
-                            "phone_number": inst.get("phone_number")
+                            "phone_number": phone
                         }
                 
                 # Procurar instância esperando QR
-                for inst in markimagem_instances:
+                for inst in my_instances:
                     if inst.get("status") == "waiting_qr":
                         return {
                             "instance_name": inst.get("name"),
@@ -1555,7 +1576,7 @@ async def get_or_create_whatsapp_instance():
                         }
                 
                 # Limpar instâncias desconectadas antes de criar nova
-                for inst in markimagem_instances:
+                for inst in my_instances:
                     if inst.get("status") == "disconnected":
                         try:
                             await client.delete(
@@ -1569,11 +1590,11 @@ async def get_or_create_whatsapp_instance():
                 
                 # Encontrar próximo número disponível
                 existing_numbers = []
-                for inst in markimagem_instances:
+                for inst in my_instances:
                     name = inst.get("name", "")
-                    if name.startswith("markimagemtv"):
+                    if name.startswith(WHATSAPP_INSTANCE_PREFIX):
                         try:
-                            num = int(name.replace("markimagemtv", ""))
+                            num = int(name.replace(WHATSAPP_INSTANCE_PREFIX, ""))
                             existing_numbers.append(num)
                         except:
                             pass
@@ -1582,18 +1603,18 @@ async def get_or_create_whatsapp_instance():
                 while next_number in existing_numbers:
                     next_number += 1
                 
-                new_instance_name = f"markimagemtv{next_number}"
+                new_instance_name = f"{WHATSAPP_INSTANCE_PREFIX}{next_number}"
                 return {
                     "instance_name": new_instance_name,
                     "status": "new",
                     "needs_creation": True
                 }
             
-            return {"instance_name": "markimagemtv1", "status": "new", "needs_creation": True}
+            return {"instance_name": f"{WHATSAPP_INSTANCE_PREFIX}1", "status": "new", "needs_creation": True}
             
     except Exception as e:
         print(f"Erro ao buscar instâncias: {e}")
-        return {"instance_name": "markimagemtv1", "status": "error", "error": str(e)}
+        return {"instance_name": f"{WHATSAPP_INSTANCE_PREFIX}1", "status": "error", "error": str(e)}
 
 # Helper function to send WhatsApp notifications
 async def send_whatsapp_notification(number: str, message: str):
@@ -1712,26 +1733,40 @@ async def get_whatsapp_status():
         instance_info = await get_or_create_whatsapp_instance()
         
         if instance_info.get("status") == "connected":
+            phone = instance_info.get("phone_number", "")
+            # Formatar número para exibição
+            display_phone = phone
+            if phone and len(phone) >= 10:
+                # Formato: +55 (61) 99517-9918
+                clean = phone.replace("+", "").replace(" ", "")
+                if len(clean) >= 12:
+                    display_phone = f"+{clean[:2]} ({clean[2:4]}) {clean[4:9]}-{clean[9:]}"
+            
             return {
                 "connected": True,
                 "hasQR": False,
                 "status": "CONNECTED",
                 "instance_name": instance_info.get("instance_name"),
-                "phone_number": instance_info.get("phone_number")
+                "phone_number": phone,
+                "phone_display": display_phone,
+                "allowed_number": WHATSAPP_ALLOWED_NUMBER,
+                "is_authorized": WHATSAPP_ALLOWED_NUMBER in phone if phone else False
             }
         elif instance_info.get("status") == "waiting_qr":
             return {
                 "connected": False,
                 "hasQR": True,
                 "status": "WAITING_QR",
-                "instance_name": instance_info.get("instance_name")
+                "instance_name": instance_info.get("instance_name"),
+                "allowed_number": WHATSAPP_ALLOWED_NUMBER
             }
         else:
             return {
                 "connected": False,
                 "hasQR": False,
                 "status": "DISCONNECTED",
-                "instance_name": instance_info.get("instance_name")
+                "instance_name": instance_info.get("instance_name"),
+                "allowed_number": WHATSAPP_ALLOWED_NUMBER
             }
     except Exception as e:
         return {"connected": False, "error": str(e), "status": "ERROR"}
@@ -1940,22 +1975,69 @@ async def whatsapp_start(current_user: Dict = Depends(get_admin_user)):
 
 @app.post("/api/whatsapp/logout")
 async def whatsapp_logout(current_user: Dict = Depends(get_admin_user)):
-    """Desconectar WhatsApp usando WAHA API (admin only)"""
+    """Desconectar WhatsApp usando WAHA Multi-Instance API (admin only)"""
     try:
-        url = f"{WAHA_API_URL}/api/{WAHA_SESSION}/logout"
-        headers = {"X-Api-Key": WAHA_API_KEY}
+        # Obter token válido
+        token = await get_whatsapp_api_token()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
         
         async with httpx.AsyncClient() as client:
-            # Logout da sessão
-            response = await client.post(url, headers=headers, timeout=10.0)
+            # Buscar instância conectada
+            instance_info = await get_or_create_whatsapp_instance()
+            instance_name = instance_info.get("instance_name")
             
-            if response.status_code in [200, 201]:
+            if instance_info.get("status") != "connected":
                 return {
-                    "success": True, 
-                    "message": "WhatsApp desconectado. Recarregue para gerar novo QR Code."
+                    "success": False, 
+                    "message": "Nenhuma instância conectada para desconectar"
                 }
-            else:
-                return {"success": False, "error": f"Erro ao desconectar: {response.status_code} - {response.text}"}
+            
+            # Buscar ID da instância pelo nome
+            response = await client.get(
+                f"{WAHA_API_URL}/api/instances",
+                headers=headers,
+                timeout=10.0
+            )
+            
+            if response.status_code == 200:
+                instances = response.json()
+                instance_to_delete = None
+                
+                for inst in instances:
+                    if inst.get("name") == instance_name:
+                        instance_to_delete = inst
+                        break
+                
+                if instance_to_delete:
+                    # Deletar a instância (isso desconecta)
+                    delete_response = await client.delete(
+                        f"{WAHA_API_URL}/api/instances/{instance_to_delete.get('id')}",
+                        headers=headers,
+                        timeout=10.0
+                    )
+                    
+                    if delete_response.status_code in [200, 204]:
+                        return {
+                            "success": True, 
+                            "message": f"WhatsApp desconectado com sucesso. Número: {instance_info.get('phone_number', 'N/A')}",
+                            "disconnected_number": instance_info.get("phone_number")
+                        }
+                    else:
+                        return {
+                            "success": False, 
+                            "error": f"Erro ao desconectar: {delete_response.status_code}"
+                        }
+                else:
+                    return {
+                        "success": False,
+                        "error": "Instância não encontrada"
+                    }
+            
+            return {"success": False, "error": "Não foi possível listar instâncias"}
+            
     except Exception as e:
         print(f"WhatsApp logout error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao desconectar: {str(e)}")

@@ -15,6 +15,11 @@ export default function WhatsAppConfig() {
   const [testNumber, setTestNumber] = useState('');
   const [testMessage, setTestMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [phoneDisplay, setPhoneDisplay] = useState<string | null>(null);
+  const [allowedNumber, setAllowedNumber] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -26,6 +31,10 @@ export default function WhatsAppConfig() {
     try {
       const response = await axios.get(`${BACKEND_URL}/api/whatsapp/status`);
       setIsConnected(response.data.connected);
+      setPhoneNumber(response.data.phone_number || null);
+      setPhoneDisplay(response.data.phone_display || null);
+      setAllowedNumber(response.data.allowed_number || null);
+      setIsAuthorized(response.data.is_authorized || false);
       
       if (!response.data.connected) {
         // Sempre tentar buscar QR Code quando não conectado
@@ -103,16 +112,16 @@ export default function WhatsAppConfig() {
   const disconnectWhatsApp = async () => {
     Alert.alert(
       'Desconectar WhatsApp',
-      'Isso irá desconectar o WhatsApp e gerar um novo QR Code. Deseja continuar?',
+      `Isso irá desconectar o número ${phoneDisplay || phoneNumber || 'atual'} e gerar um novo QR Code. Deseja continuar?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Desconectar',
           style: 'destructive',
           onPress: async () => {
-            setLoading(true);
+            setDisconnecting(true);
             try {
-              await axios.post(
+              const response = await axios.post(
                 `${BACKEND_URL}/api/whatsapp/logout`,
                 {},
                 {
@@ -121,12 +130,19 @@ export default function WhatsAppConfig() {
                   }
                 }
               );
-              Alert.alert('Sucesso', 'WhatsApp desconectado! Novo QR Code será gerado.');
+              if (response.data.success) {
+                Alert.alert('Sucesso', response.data.message || 'WhatsApp desconectado! Novo QR Code será gerado.');
+                setIsConnected(false);
+                setPhoneNumber(null);
+                setPhoneDisplay(null);
+              } else {
+                Alert.alert('Erro', response.data.error || 'Erro ao desconectar');
+              }
               setTimeout(checkStatus, 3000);
             } catch (error: any) {
               Alert.alert('Erro', error.response?.data?.detail || 'Erro ao desconectar');
             } finally {
-              setLoading(false);
+              setDisconnecting(false);
             }
           }
         }
@@ -159,20 +175,44 @@ export default function WhatsAppConfig() {
               {isConnected ? 'WhatsApp Conectado' : 'WhatsApp Desconectado'}
             </Text>
           </View>
+          
+          {isConnected && phoneDisplay && (
+            <View style={styles.phoneNumberBox}>
+              <Ionicons name="call" size={20} color="#007AFF" />
+              <Text style={styles.phoneNumberText}>{phoneDisplay}</Text>
+            </View>
+          )}
+          
           <Text style={styles.statusSubtitle}>
             {isConnected 
-              ? '✅ Notificações serão enviadas automaticamente como MARKIMAGEM TV'
+              ? '✅ Notificações serão enviadas automaticamente'
               : '⚠️ Escaneie o QR Code abaixo para conectar'
             }
           </Text>
           
+          {allowedNumber && (
+            <View style={styles.allowedNumberBox}>
+              <Ionicons name="shield-checkmark" size={16} color="#34C759" />
+              <Text style={styles.allowedNumberText}>
+                Número autorizado: {allowedNumber.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')}
+              </Text>
+            </View>
+          )}
+          
           {isConnected && (
             <TouchableOpacity 
-              style={styles.disconnectButton}
+              style={[styles.disconnectButton, disconnecting && styles.disconnectButtonDisabled]}
               onPress={disconnectWhatsApp}
+              disabled={disconnecting}
             >
-              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-              <Text style={styles.disconnectButtonText}>Desconectar WhatsApp</Text>
+              {disconnecting ? (
+                <ActivityIndicator size="small" color="#FF3B30" />
+              ) : (
+                <>
+                  <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+                  <Text style={styles.disconnectButtonText}>Desconectar WhatsApp</Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -335,6 +375,34 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20
   },
+  phoneNumberBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    marginBottom: 8
+  },
+  phoneNumberText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2E7D32'
+  },
+  allowedNumberBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 6
+  },
+  allowedNumberText: {
+    fontSize: 12,
+    color: '#666'
+  },
   disconnectButton: {
     marginTop: 16,
     flexDirection: 'row',
@@ -346,6 +414,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#FFE0E0'
+  },
+  disconnectButtonDisabled: {
+    opacity: 0.6
   },
   disconnectButtonText: {
     color: '#FF3B30',
