@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
@@ -14,19 +15,17 @@ export default function PaymentPix() {
   const [paymentApproved, setPaymentApproved] = useState(false);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Novos parâmetros para PIX Direto
   const orderId = params.orderId as string || '';
   const paymentId = params.paymentId as string || '';
   const pixPayload = params.pixPayload as string || '';
   const pixKey = params.pixKey as string || '';
   const merchantName = params.merchantName as string || '';
   const amount = params.amount as string || '0.00';
+  const productName = params.productName as string || '';
+  const productImage = params.productImage as string || '';
+  const itemCount = parseInt(params.itemCount as string || '1');
   
-  // Para compatibilidade, também aceitar os parâmetros antigos
   const qrCode = (params.qrCode as string) || pixPayload;
-  
-  // Debug - remover depois
-  console.log('Payment Params:', { orderId, paymentId, pixPayload, pixKey, merchantName, amount, qrCode });
 
   useEffect(() => {
     startPolling();
@@ -41,15 +40,13 @@ export default function PaymentPix() {
     checkPaymentStatus();
     pollingInterval.current = setInterval(() => {
       checkPaymentStatus();
-    }, 10000); // Verificar a cada 10 segundos
+    }, 10000);
   };
 
   const checkPaymentStatus = async () => {
     try {
       setChecking(true);
       const response = await axios.get(`${BACKEND_URL}/api/payments/${paymentId}/status`);
-      
-      console.log('Payment status:', response.data.status);
 
       if (response.data.status === 'approved') {
         setPaymentApproved(true);
@@ -107,35 +104,79 @@ export default function PaymentPix() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleCancel}>
-          <Ionicons name="close" size={24} color="#000" />
+      <LinearGradient colors={['#1E1E2E', '#2D2D44']} style={styles.header}>
+        <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
+          <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Pagamento PIX</Text>
-        <View style={{ width: 24 }} />
-      </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {paymentApproved ? (
           <View style={styles.successContainer}>
-            <Ionicons name="checkmark-circle" size={80} color="#34C759" />
+            <LinearGradient
+              colors={['#10B981', '#34D399']}
+              style={styles.successIcon}
+            >
+              <Ionicons name="checkmark" size={60} color="#fff" />
+            </LinearGradient>
             <Text style={styles.successTitle}>Pagamento Aprovado!</Text>
             <Text style={styles.successText}>Seu pedido está sendo processado</Text>
+            <TouchableOpacity 
+              style={styles.viewOrdersButton}
+              onPress={() => router.replace('/(tabs)/orders')}
+            >
+              <Text style={styles.viewOrdersButtonText}>Ver Meus Pedidos</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <>
-            <View style={styles.amountSection}>
+            {/* Product Preview */}
+            {(productName || productImage) && (
+              <LinearGradient colors={['#2D2D44', '#1E1E2E']} style={styles.productPreview}>
+                {productImage ? (
+                  <Image
+                    source={{ uri: productImage }}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.productImagePlaceholder}>
+                    <Ionicons name="cube" size={40} color="#6366F1" />
+                  </View>
+                )}
+                <View style={styles.productPreviewInfo}>
+                  <Text style={styles.productPreviewName} numberOfLines={2}>
+                    {productName || 'Produto'}
+                  </Text>
+                  {itemCount > 1 && (
+                    <Text style={styles.productPreviewExtra}>+{itemCount - 1} item(s)</Text>
+                  )}
+                </View>
+              </LinearGradient>
+            )}
+
+            {/* Amount Section */}
+            <LinearGradient
+              colors={['#6366F1', '#8B5CF6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.amountSection}
+            >
               <Text style={styles.amountLabel}>Valor a Pagar</Text>
               <Text style={styles.amountValue}>R$ {amount}</Text>
-            </View>
+            </LinearGradient>
 
-            <View style={styles.qrSection}>
+            {/* QR Code Section */}
+            <LinearGradient colors={['#2D2D44', '#1E1E2E']} style={styles.qrSection}>
               <Text style={styles.sectionTitle}>Escaneie o QR Code</Text>
               {(pixPayload || qrCode) && (
                 <View style={styles.qrCodeContainer}>
                   <QRCode
                     value={(pixPayload || qrCode) as string}
                     size={200}
+                    backgroundColor="#fff"
                   />
                 </View>
               )}
@@ -152,15 +193,17 @@ export default function PaymentPix() {
               <Text style={styles.qrHint}>
                 Abra o app do seu banco e escaneie o código
               </Text>
-            </View>
+            </LinearGradient>
 
+            {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>ou</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            <View style={styles.codeSection}>
+            {/* Copy Code Section */}
+            <LinearGradient colors={['#2D2D44', '#1E1E2E']} style={styles.codeSection}>
               <Text style={styles.sectionTitle}>PIX Copia e Cola</Text>
               <Text style={styles.codeHint}>Copie o código abaixo e cole no app do seu banco</Text>
               <View style={styles.codeContainer}>
@@ -181,20 +224,30 @@ export default function PaymentPix() {
                 onPress={copyToClipboard}
                 disabled={!(pixPayload || qrCode)}
               >
-                <Ionicons name="copy" size={20} color="#fff" />
-                <Text style={styles.copyButtonText}>Copiar Código PIX</Text>
+                <LinearGradient
+                  colors={['#10B981', '#34D399']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.copyButtonGradient}
+                >
+                  <Ionicons name="copy" size={20} color="#fff" />
+                  <Text style={styles.copyButtonText}>Copiar Código PIX</Text>
+                </LinearGradient>
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
-            <View style={styles.statusSection}>
+            {/* Status Section */}
+            <LinearGradient colors={['#2D2D44', '#1E1E2E']} style={styles.statusSection}>
               {checking ? (
                 <View style={styles.checkingContainer}>
-                  <ActivityIndicator size="small" color="#007AFF" />
+                  <ActivityIndicator size="small" color="#6366F1" />
                   <Text style={styles.checkingText}>Verificando pagamento...</Text>
                 </View>
               ) : (
                 <View style={styles.waitingContainer}>
-                  <Ionicons name="time-outline" size={24} color="#FF9500" />
+                  <View style={styles.waitingIconBg}>
+                    <Ionicons name="time-outline" size={28} color="#F59E0B" />
+                  </View>
                   <Text style={styles.waitingText}>
                     Aguardando confirmação do pagamento...
                   </Text>
@@ -203,21 +256,22 @@ export default function PaymentPix() {
                   </Text>
                 </View>
               )}
-            </View>
+            </LinearGradient>
 
+            {/* Instructions */}
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={24} color="#007AFF" />
+              <Ionicons name="information-circle" size={24} color="#6366F1" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>Como pagar:</Text>
-                <Text style={styles.infoText}>
-                  1. Abra o app do seu banco{'\n'}
-                  2. Entre em PIX → Pix Copia e Cola{'\n'}
-                  3. Cole o código ou escaneie o QR Code{'\n'}
-                  4. Confirme o pagamento de R$ {amount}{'\n'}
-                  5. Aguarde a confirmação pelo vendedor
-                </Text>
+                <Text style={styles.infoTextItem}>1. Abra o app do seu banco</Text>
+                <Text style={styles.infoTextItem}>2. Entre em PIX → Pix Copia e Cola</Text>
+                <Text style={styles.infoTextItem}>3. Cole o código ou escaneie o QR Code</Text>
+                <Text style={styles.infoTextItem}>4. Confirme o pagamento de R$ {amount}</Text>
+                <Text style={styles.infoTextItem}>5. Aguarde a confirmação pelo vendedor</Text>
               </View>
             </View>
+
+            <View style={{ height: 40 }} />
           </>
         )}
       </ScrollView>
@@ -228,34 +282,77 @@ export default function PaymentPix() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5'
+    backgroundColor: '#111827'
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0'
+    paddingTop: 10
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#000'
+    color: '#fff'
   },
   content: {
-    flex: 1
+    flex: 1,
+    padding: 16
+  },
+  productPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
+  },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12
+  },
+  productImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  productPreviewInfo: {
+    flex: 1,
+    marginLeft: 14
+  },
+  productPreviewName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E5E7EB'
+  },
+  productPreviewExtra: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 4
   },
   amountSection: {
-    backgroundColor: '#007AFF',
-    padding: 32,
-    alignItems: 'center'
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 16
   },
   amountLabel: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: 8
   },
   amountValue: {
@@ -264,96 +361,99 @@ const styles = StyleSheet.create({
     color: '#fff'
   },
   qrSection: {
-    backgroundColor: '#fff',
     padding: 24,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 16
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#fff',
     marginBottom: 16
   },
   qrCodeContainer: {
-    padding: 20,
+    padding: 16,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16
   },
   qrHint: {
     fontSize: 14,
-    color: '#666',
+    color: '#9CA3AF',
     textAlign: 'center'
   },
   merchantName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: '#E5E7EB',
+    marginBottom: 4,
     textAlign: 'center'
   },
   pixKeyInfo: {
     fontSize: 12,
-    color: '#666',
+    color: '#9CA3AF',
     marginBottom: 12,
     textAlign: 'center'
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    marginVertical: 16
+    marginVertical: 20
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E0E0E0'
+    backgroundColor: 'rgba(255,255,255,0.1)'
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    color: '#999'
+    color: '#6B7280'
   },
   codeSection: {
-    backgroundColor: '#fff',
-    padding: 24
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
   },
   codeHint: {
     fontSize: 13,
-    color: '#666',
+    color: '#9CA3AF',
     textAlign: 'center',
     marginBottom: 16
   },
   codeContainer: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 16
   },
   codeText: {
     fontSize: 11,
-    color: '#333',
+    color: '#A5B4FC',
     fontFamily: 'monospace'
   },
   codeTextError: {
     fontSize: 13,
-    color: '#FF3B30',
+    color: '#EF4444',
     textAlign: 'center',
     padding: 8
   },
   copyButton: {
-    backgroundColor: '#34C759',
-    padding: 16,
     borderRadius: 12,
+    overflow: 'hidden'
+  },
+  copyButtonGradient: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8
+    padding: 16,
+    gap: 10
   },
   copyButtonDisabled: {
-    backgroundColor: '#CCC',
-    opacity: 0.7
+    opacity: 0.5
   },
   copyButtonText: {
     color: '#fff',
@@ -361,10 +461,12 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   statusSection: {
-    backgroundColor: '#fff',
-    padding: 24,
+    padding: 20,
+    borderRadius: 16,
     marginTop: 16,
-    alignItems: 'center'
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
   },
   checkingContainer: {
     flexDirection: 'row',
@@ -373,59 +475,87 @@ const styles = StyleSheet.create({
   },
   checkingText: {
     fontSize: 14,
-    color: '#007AFF'
+    color: '#A5B4FC'
   },
   waitingContainer: {
     alignItems: 'center',
-    gap: 12
+    gap: 10
+  },
+  waitingIconBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8
   },
   waitingText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: '#E5E7EB',
     textAlign: 'center'
   },
   waitingSubtext: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 8
-  },
-  successContainer: {
-    alignItems: 'center',
-    padding: 48
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#34C759',
-    marginTop: 24,
-    marginBottom: 8
-  },
-  successText: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 13,
+    color: '#9CA3AF',
     textAlign: 'center'
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: '#007AFF20',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
     padding: 16,
-    borderRadius: 12,
-    margin: 16,
+    borderRadius: 16,
+    marginTop: 16,
     gap: 12
   },
   infoContent: {
     flex: 1
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#A5B4FC',
     marginBottom: 8
   },
-  infoText: {
+  infoTextItem: {
     fontSize: 13,
-    color: '#007AFF',
-    lineHeight: 20
+    color: '#9CA3AF',
+    marginBottom: 4,
+    lineHeight: 18
+  },
+  successContainer: {
+    alignItems: 'center',
+    padding: 40
+  },
+  successIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24
+  },
+  successTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginBottom: 8
+  },
+  successText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 32
+  },
+  viewOrdersButton: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12
+  },
+  viewOrdersButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600'
   }
 });

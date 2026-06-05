@@ -14,6 +14,7 @@ interface Product {
   type: string;
   required_fields: string[];
   discount_rules: Array<{ min_quantity: number; discount_percent: number }>;
+  image_url?: string;
 }
 
 export default function ProductDetail() {
@@ -114,6 +115,7 @@ export default function ProductDetail() {
       product_id: product.id,
       product_name: product.name,
       product_type: product.type,
+      product_image: product.image_url,
       quantity,
       unit_price: product.price,
       fields_data: fieldsData,

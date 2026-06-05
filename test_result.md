@@ -335,11 +335,11 @@ backend:
 frontend:
   - task: "Auto-refresh Orders Screens (Admin & Client)"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/app/admin/orders.tsx, frontend/app/(tabs)/orders.tsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -355,6 +355,31 @@ frontend:
             * /app/frontend/app/admin/orders.tsx (importado useFocusEffect, adicionado hook)
             * /app/frontend/app/(tabs)/orders.tsx (importado useFocusEffect de @react-navigation/native, adicionado hook)
           - Needs Testing: Navegar para telas de pedidos e verificar que lista atualiza automaticamente
+      - working: false
+        agent: "testing"
+        comment: |
+          ❌ CRITICAL BUG FOUND - RED SCREEN ERROR:
+          - Error: "Uncaught Error: Couldn't find a navigation object. Is your component inside NavigationContainer?"
+          - Location: app/(tabs)/orders.tsx line 46:17 (useFocusEffect hook)
+          - Root Cause: Client orders page importing useFocusEffect from WRONG package
+            * WRONG: import { useFocusEffect } from '@react-navigation/native';
+            * CORRECT: import { useRouter, useFocusEffect } from 'expo-router';
+          - Impact: Orders page completely broken with red screen error, blocking all functionality
+          - Admin orders page working correctly (uses correct import from expo-router)
+      - working: true
+        agent: "testing"
+        comment: |
+          ✅ CRITICAL BUG FIXED AND VERIFIED:
+          - Fixed import in /app/frontend/app/(tabs)/orders.tsx
+          - Changed from: import { useFocusEffect } from '@react-navigation/native';
+          - Changed to: import { useRouter, useFocusEffect } from 'expo-router';
+          - Testing Results:
+            * ✅ Orders page loads successfully without errors
+            * ✅ No red screen error detected
+            * ✅ Page navigation working correctly
+            * ✅ Dark theme (#111827) applied correctly
+            * ✅ Auto-refresh functionality now working as intended
+          - All pages tested and working: Home, Products, Cart, Orders, Profile
 
 metadata:
   created_by: "testing_agent"
@@ -498,3 +523,58 @@ agent_communication:
       - Possible causes: WAHA session problems, phone not registered in WhatsApp, API config
       
       🚀 READY FOR PRODUCTION: The phone normalization fix is working perfectly!
+  
+  - agent: "testing"
+    message: |
+      🎉 FRONTEND UI TESTING & CRITICAL BUG FIX COMPLETED:
+      
+      ❌ CRITICAL BUG FOUND & FIXED:
+      - Issue: Orders page showing RED SCREEN ERROR
+      - Error: "Couldn't find a navigation object. Is your component inside NavigationContainer?"
+      - Root Cause: app/(tabs)/orders.tsx importing useFocusEffect from WRONG package
+        * WRONG: import { useFocusEffect } from '@react-navigation/native';
+        * CORRECT: import { useRouter, useFocusEffect } from 'expo-router';
+      - Fix Applied: Changed import in /app/frontend/app/(tabs)/orders.tsx
+      - Result: ✅ Orders page now working perfectly, no errors
+      
+      ✅ UI TESTING RESULTS (ALL PAGES VERIFIED):
+      1. Home Page:
+         - ✅ Dark theme (#111827) applied correctly
+         - ✅ Gradient headers with dark colors (#1E1E2E, #2D2D44)
+         - ✅ User greeting and navigation working
+      
+      2. Products Page:
+         - ✅ Dark theme applied
+         - ✅ 2-column grid layout verified (CARD_WIDTH = (width - 48) / 2)
+         - ✅ Product images displaying correctly
+         - ✅ Search and filter functionality working
+      
+      3. Cart Page:
+         - ✅ Dark theme applied
+         - ✅ Product images showing in cart items (item.product_image)
+         - ✅ Empty cart state working correctly
+      
+      4. Orders Page (CRITICAL FIX):
+         - ✅ NO RED SCREEN ERROR after fix
+         - ✅ Dark theme applied
+         - ✅ Product thumbnails displaying (item.product_image)
+         - ✅ Auto-refresh functionality working
+         - ✅ useFocusEffect now using correct expo-router import
+      
+      5. Profile Page:
+         - ✅ Dark theme applied
+         - ✅ User information displaying correctly
+         - ✅ Navigation working
+      
+      ⚠️ EXPECTED BEHAVIOR:
+      - "Estamos Fechados" modal appears on all pages (outside business hours 09:00-18:00)
+      - Modal shows next opening time correctly
+      - This is EXPECTED and CORRECT behavior
+      
+      🎯 SUMMARY:
+      - All pages tested and working correctly
+      - Dark theme (#111827) verified across entire app
+      - 2-column product grid working as designed
+      - Product images displaying in Cart and Orders
+      - Critical navigation bug fixed in Orders page
+      - Auto-refresh functionality now working correctly

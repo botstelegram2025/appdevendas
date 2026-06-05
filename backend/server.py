@@ -277,6 +277,7 @@ class ProductCreate(BaseModel):
     discount_rules: List[Dict[str, Any]] = []  # [{"min_quantity": 20, "discount_percent": 5}]
     active: bool = True
     image: Optional[str] = None  # Base64 encoded image
+    links: Optional[List[Dict[str, Any]]] = []  # [{"title": "Link", "url": "https://...", "visibility": "admin_only" | "all"}]
 
 class OrderItem(BaseModel):
     product_id: str
@@ -521,6 +522,25 @@ async def get_products(category_id: Optional[str] = None):
         # Converter campo 'image' para 'image_url' para compatibilidade frontend
         if prod.get("image"):
             prod["image_url"] = prod["image"]
+        # Para usuários normais, filtrar links - mostrar apenas os com visibility "all"
+        if prod.get("links"):
+            prod["links"] = [link for link in prod["links"] if link.get("visibility") == "all"]
+    return products
+
+@app.get("/api/admin/products")
+async def get_products_admin(category_id: Optional[str] = None, current_user: Dict = Depends(get_admin_user)):
+    """Lista produtos para admin - inclui TODOS os links"""
+    query = {}
+    if category_id:
+        query["category_id"] = category_id
+    
+    products = list(products_collection.find(query))
+    for prod in products:
+        prod["id"] = str(prod["_id"])
+        del prod["_id"]
+        if prod.get("image"):
+            prod["image_url"] = prod["image"]
+        # Admin vê todos os links
     return products
 
 @app.get("/api/products/{product_id}")
@@ -534,6 +554,9 @@ async def get_product(product_id: str):
     # Converter campo 'image' para 'image_url' para compatibilidade frontend
     if product.get("image"):
         product["image_url"] = product["image"]
+    # Para usuários normais, filtrar links
+    if product.get("links"):
+        product["links"] = [link for link in product["links"] if link.get("visibility") == "all"]
     return product
 
 @app.post("/api/products")
@@ -629,7 +652,14 @@ async def get_orders(current_user: Dict = Depends(get_current_user)):
         # Add payment_id if exists
         payment = payments_collection.find_one({"order_id": order_id})
         if payment:
-            order["payment_id"] = payment.get("mercadopago_id")
+            order["payment_id"] = payment.get("mercadopago_id") or payment.get("payment_id")
+        
+        # Enriquecer items com informações do produto
+        for item in order.get("items", []):
+            product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+            if product:
+                item["product_name"] = product["name"]
+                item["product_image"] = product.get("image") or product.get("image_url")
     return orders
 
 @app.get("/api/orders/{order_id}")
@@ -640,6 +670,17 @@ async def get_order(order_id: str, current_user: Dict = Depends(get_current_user
     
     order["id"] = str(order["_id"])
     del order["_id"]
+    
+    # Enriquecer items com informações do produto (nome, imagem, links visíveis)
+    for item in order.get("items", []):
+        product = products_collection.find_one({"_id": ObjectId(item["product_id"])})
+        if product:
+            item["product_name"] = product["name"]
+            item["product_image"] = product.get("image") or product.get("image_url")
+            # Incluir apenas links visíveis para usuários (visibility == "all")
+            product_links = product.get("links", [])
+            item["product_links"] = [link for link in product_links if link.get("visibility") == "all"]
+    
     return order
 
 # Admin Orders

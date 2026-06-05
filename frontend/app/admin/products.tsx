@@ -23,6 +23,13 @@ interface Product {
   discount_rules: Array<{ min_quantity: number; discount_percent: number }>;
   active: boolean;
   image_url?: string;
+  links?: Array<{ title: string; url: string; visibility: 'admin_only' | 'all' }>;
+}
+
+interface ProductLink {
+  title: string;
+  url: string;
+  visibility: 'admin_only' | 'all';
 }
 
 const AVAILABLE_FIELDS = ['MAC', 'CHAVE OTP', 'E-mail', 'Senha do app', 'Device ID', 'Usuário', 'Login'];
@@ -46,9 +53,14 @@ export default function ProductsManagement() {
     required_fields: [] as string[],
     discount_rules: [] as Array<{ min_quantity: number; discount_percent: number }>,
     active: true,
-    image_url: ''
+    image_url: '',
+    links: [] as ProductLink[]
   });
   const [imageUri, setImageUri] = useState<string | null>(null);
+  
+  // Estados para gerenciar links
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [newLink, setNewLink] = useState<ProductLink>({ title: '', url: '', visibility: 'all' });
 
   useEffect(() => {
     loadData();
@@ -88,7 +100,8 @@ export default function ProductsManagement() {
         required_fields: formData.required_fields,
         discount_rules: formData.discount_rules,
         active: true,
-        image: formData.image_url || null  // Enviar como 'image' para o backend
+        image: formData.image_url || null,
+        links: formData.links || []
       };
 
       if (editingProduct) {
@@ -109,6 +122,7 @@ export default function ProductsManagement() {
   const resetForm = () => {
     setEditingProduct(null);
     setImageUri(null);
+    setNewLink({ title: '', url: '', visibility: 'all' });
     setFormData({
       name: '',
       description: '',
@@ -118,7 +132,8 @@ export default function ProductsManagement() {
       required_fields: [],
       discount_rules: [],
       active: true,
-      image_url: ''
+      image_url: '',
+      links: []
     });
   };
 
@@ -167,9 +182,31 @@ export default function ProductsManagement() {
       required_fields: product.required_fields || [],
       discount_rules: product.discount_rules || [],
       active: product.active,
-      image_url: product.image_url || ''
+      image_url: product.image_url || '',
+      links: product.links || []
     });
     setModalVisible(true);
+  };
+
+  // Funções para gerenciar links
+  const addLink = () => {
+    if (!newLink.title || !newLink.url) {
+      Alert.alert('Erro', 'Preencha o título e URL do link');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      links: [...prev.links, { ...newLink }]
+    }));
+    setNewLink({ title: '', url: '', visibility: 'all' });
+    setShowLinkModal(false);
+  };
+
+  const removeLink = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      links: prev.links.filter((_, i) => i !== index)
+    }));
   };
 
   const handleDelete = (product: Product) => {
@@ -435,10 +472,150 @@ export default function ProductsManagement() {
                 </View>
               )}
 
+              {/* Seção de Links */}
+              <View style={styles.formGroup}>
+                <View style={styles.linksSectionHeader}>
+                  <Text style={styles.label}>Links do Produto</Text>
+                  <TouchableOpacity 
+                    style={styles.addLinkButton}
+                    onPress={() => setShowLinkModal(true)}
+                  >
+                    <Ionicons name="add-circle" size={24} color="#007AFF" />
+                    <Text style={styles.addLinkButtonText}>Adicionar Link</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.hint}>Links vinculados ao produto (ex: downloads, manuais)</Text>
+                
+                {formData.links.length === 0 ? (
+                  <View style={styles.noLinksContainer}>
+                    <Ionicons name="link-outline" size={32} color="#CCC" />
+                    <Text style={styles.noLinksText}>Nenhum link adicionado</Text>
+                  </View>
+                ) : (
+                  <View style={styles.linksList}>
+                    {formData.links.map((link, index) => (
+                      <View key={index} style={styles.linkItem}>
+                        <View style={styles.linkItemContent}>
+                          <View style={styles.linkItemHeader}>
+                            <Ionicons name="link" size={16} color="#007AFF" />
+                            <Text style={styles.linkTitle}>{link.title}</Text>
+                            <View style={[
+                              styles.visibilityBadge,
+                              link.visibility === 'admin_only' ? styles.visibilityAdmin : styles.visibilityAll
+                            ]}>
+                              <Ionicons 
+                                name={link.visibility === 'admin_only' ? 'lock-closed' : 'globe'} 
+                                size={12} 
+                                color={link.visibility === 'admin_only' ? '#FF9500' : '#34C759'} 
+                              />
+                              <Text style={[
+                                styles.visibilityText,
+                                link.visibility === 'admin_only' ? styles.visibilityTextAdmin : styles.visibilityTextAll
+                              ]}>
+                                {link.visibility === 'admin_only' ? 'Admin' : 'Todos'}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text style={styles.linkUrl} numberOfLines={1}>{link.url}</Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.removeLinkButton}
+                          onPress={() => removeLink(index)}
+                        >
+                          <Ionicons name="trash" size={18} color="#FF3B30" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
               <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                 <Text style={styles.saveButtonText}>Salvar Produto</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal para adicionar link */}
+      <Modal
+        visible={showLinkModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowLinkModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.linkModalContainer}>
+            <View style={styles.linkModalHeader}>
+              <Text style={styles.linkModalTitle}>Adicionar Link</Text>
+              <TouchableOpacity onPress={() => setShowLinkModal(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Título do Link *</Text>
+              <TextInput
+                style={styles.input}
+                value={newLink.title}
+                onChangeText={(text) => setNewLink(prev => ({ ...prev, title: text }))}
+                placeholder="Ex: Manual de Instalação"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>URL *</Text>
+              <TextInput
+                style={styles.input}
+                value={newLink.url}
+                onChangeText={(text) => setNewLink(prev => ({ ...prev, url: text }))}
+                placeholder="https://..."
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Visibilidade</Text>
+              <View style={styles.visibilityOptions}>
+                <TouchableOpacity
+                  style={[
+                    styles.visibilityOption,
+                    newLink.visibility === 'all' && styles.visibilityOptionSelected
+                  ]}
+                  onPress={() => setNewLink(prev => ({ ...prev, visibility: 'all' }))}
+                >
+                  <Ionicons name="globe" size={20} color={newLink.visibility === 'all' ? '#34C759' : '#666'} />
+                  <Text style={[
+                    styles.visibilityOptionText,
+                    newLink.visibility === 'all' && styles.visibilityOptionTextSelected
+                  ]}>
+                    Admin e Usuário
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.visibilityOption,
+                    newLink.visibility === 'admin_only' && styles.visibilityOptionSelectedAdmin
+                  ]}
+                  onPress={() => setNewLink(prev => ({ ...prev, visibility: 'admin_only' }))}
+                >
+                  <Ionicons name="lock-closed" size={20} color={newLink.visibility === 'admin_only' ? '#FF9500' : '#666'} />
+                  <Text style={[
+                    styles.visibilityOptionText,
+                    newLink.visibility === 'admin_only' && styles.visibilityOptionTextSelectedAdmin
+                  ]}>
+                    Apenas Admin
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.addLinkSubmitButton} onPress={addLink}>
+              <Ionicons name="add" size={20} color="#fff" />
+              <Text style={styles.addLinkSubmitText}>Adicionar Link</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

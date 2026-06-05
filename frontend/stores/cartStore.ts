@@ -4,6 +4,7 @@ interface CartItem {
   product_id: string;
   product_name: string;
   product_type: string;
+  product_image?: string;
   quantity: number;
   unit_price: number;
   fields_data: { [key: string]: string };
