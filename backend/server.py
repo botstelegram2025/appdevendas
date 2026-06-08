@@ -585,6 +585,26 @@ async def delete_product(product_id: str, current_user: Dict = Depends(get_admin
         raise HTTPException(status_code=404, detail="Product not found")
     return {"message": "Product deleted"}
 
+@app.patch("/api/products/{product_id}/toggle-status")
+async def toggle_product_status(product_id: str, current_user: Dict = Depends(get_admin_user)):
+    """Toggle product online/offline status"""
+    product = products_collection.find_one({"_id": ObjectId(product_id)})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Toggle o status active
+    new_status = not product.get("active", True)
+    
+    products_collection.update_one(
+        {"_id": ObjectId(product_id)},
+        {"$set": {"active": new_status}}
+    )
+    
+    return {
+        "message": f"Produto {'ativado' if new_status else 'desativado'} com sucesso",
+        "active": new_status
+    }
+
 # Orders Routes
 @app.post("/api/orders")
 async def create_order(order: OrderCreate, current_user: Dict = Depends(get_current_user)):

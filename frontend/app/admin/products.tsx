@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BACKEND_URL } from '../../config';
 
 interface Category {
@@ -44,6 +45,7 @@ export default function ProductsManagement() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [togglingProduct, setTogglingProduct] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -68,8 +70,11 @@ export default function ProductsManagement() {
 
   const loadData = async () => {
     try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
       const [productsRes, categoriesRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/products`),
+        axios.get(`${BACKEND_URL}/api/admin/products`, { headers }),
         axios.get(`${BACKEND_URL}/api/categories`)
       ]);
       setProducts(productsRes.data);
@@ -81,6 +86,33 @@ export default function ProductsManagement() {
       Alert.alert('Erro', 'Não foi possível carregar os dados');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleProductStatus = async (productId: string) => {
+    try {
+      setTogglingProduct(productId);
+      const token = await AsyncStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const response = await axios.patch(
+        `${BACKEND_URL}/api/products/${productId}/toggle-status`,
+        {},
+        { headers }
+      );
+      
+      // Atualizar o produto na lista local
+      setProducts(prev => prev.map(p => 
+        p.id === productId 
+          ? { ...p, active: response.data.active }
+          : p
+      ));
+      
+      Alert.alert('Sucesso', response.data.message);
+    } catch (error: any) {
+      Alert.alert('Erro', error.response?.data?.detail || 'Não foi possível alterar o status');
+    } finally {
+      setTogglingProduct(null);
     }
   };
 
@@ -275,32 +307,59 @@ export default function ProductsManagement() {
       ) : (
         <ScrollView style={styles.content}>
           {products.map((product) => (
-            <View key={product.id} style={styles.productCard}>
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{product.name}</Text>
-                <Text style={styles.productCategory}>{getCategoryName(product.category_id)}</Text>
-                <Text style={styles.productPrice}>R$ {product.price.toFixed(2)}</Text>
-                {product.required_fields && product.required_fields.length > 0 && (
-                  <Text style={styles.productFields}>
-                    Campos: {product.required_fields.join(', ')}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.actions}>
-                <Pressable 
-                  onPress={() => handleEdit(product)} 
-                  style={styles.actionButton}
-                  accessibilityLabel="Editar produto"
-                >
-                  <Ionicons name="pencil" size={20} color="#007AFF" />
-                </Pressable>
-                <Pressable 
-                  onPress={() => handleDelete(product)} 
-                  style={styles.actionButton}
-                  accessibilityLabel={`Excluir ${product.name}`}
-                >
-                  <Ionicons name="trash" size={20} color="#FF3B30" />
-                </Pressable>
+            <View key={product.id} style={[styles.productCard, !product.active && styles.productCardInactive]}>
+              <View style={styles.productHeader}>
+                <View style={styles.productInfo}>
+                  <View style={styles.productNameRow}>
+                    <Text style={[styles.productName, !product.active && styles.productNameInactive]}>{product.name}</Text>
+                    {!product.active && (
+                      <View style={styles.offlineBadge}>
+                        <Text style={styles.offlineBadgeText}>OFFLINE</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.productCategory}>{getCategoryName(product.category_id)}</Text>
+                  <Text style={styles.productPrice}>R$ {product.price.toFixed(2)}</Text>
+                  {product.required_fields && product.required_fields.length > 0 && (
+                    <Text style={styles.productFields}>
+                      Campos: {product.required_fields.join(', ')}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.actions}>
+                  {/* Botão Toggle Online/Offline */}
+                  <TouchableOpacity 
+                    onPress={() => toggleProductStatus(product.id)} 
+                    style={[styles.actionButton, styles.toggleButton]}
+                    disabled={togglingProduct === product.id}
+                  >
+                    {togglingProduct === product.id ? (
+                      <ActivityIndicator size="small" color="#007AFF" />
+                    ) : (
+                      <View style={[styles.toggleIndicator, product.active ? styles.toggleActive : styles.toggleInactive]}>
+                        <Ionicons 
+                          name={product.active ? "wifi" : "wifi-outline"} 
+                          size={18} 
+                          color={product.active ? "#34C759" : "#FF3B30"} 
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <Pressable 
+                    onPress={() => handleEdit(product)} 
+                    style={styles.actionButton}
+                    accessibilityLabel="Editar produto"
+                  >
+                    <Ionicons name="pencil" size={20} color="#007AFF" />
+                  </Pressable>
+                  <Pressable 
+                    onPress={() => handleDelete(product)} 
+                    style={styles.actionButton}
+                    accessibilityLabel={`Excluir ${product.name}`}
+                  >
+                    <Ionicons name="trash" size={20} color="#FF3B30" />
+                  </Pressable>
+                </View>
               </View>
             </View>
           ))}
@@ -701,18 +760,46 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 12
+  },
+  productCardInactive: {
+    backgroundColor: '#F8F8F8',
+    opacity: 0.85,
+    borderWidth: 1,
+    borderColor: '#FFD0D0'
+  },
+  productHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between'
   },
   productInfo: {
     flex: 1
   },
+  productNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4
+  },
   productName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
-    marginBottom: 4
+    color: '#000'
+  },
+  productNameInactive: {
+    color: '#999'
+  },
+  offlineBadge: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+  offlineBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold'
   },
   productCategory: {
     fontSize: 12,
@@ -732,10 +819,30 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 12
+    gap: 8,
+    alignItems: 'flex-start'
   },
   actionButton: {
     padding: 8
+  },
+  toggleButton: {
+    marginRight: 4
+  },
+  toggleIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2
+  },
+  toggleActive: {
+    backgroundColor: '#E8F8EC',
+    borderColor: '#34C759'
+  },
+  toggleInactive: {
+    backgroundColor: '#FFE5E5',
+    borderColor: '#FF3B30'
   },
   modalOverlay: {
     flex: 1,
