@@ -11,8 +11,8 @@ COPY . .
 WORKDIR /workspace/frontend
 
 # Configurar variável de ambiente para o build
-ENV EXPO_PUBLIC_BACKEND_URL=https://appdevendas-production.up.railway.app
-RUN echo "EXPO_PUBLIC_BACKEND_URL=https://appdevendas-production.up.railway.app" > .env
+ENV EXPO_PUBLIC_BACKEND_URL=https://p01--appdevendas--cqnp8bvkcmhx.code.run
+RUN echo "EXPO_PUBLIC_BACKEND_URL=https://p01--appdevendas--cqnp8bvkcmhx.code.run" > .env
 
 # Instalar dependências (sem frozen-lockfile para evitar erro de lock desatualizado)
 RUN yarn install
@@ -36,3 +36,4 @@ RUN echo '{"rewrites":[{"source":"**","destination":"/index.html"}]}' > /app/ser
 EXPOSE 3000
 
 CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+
