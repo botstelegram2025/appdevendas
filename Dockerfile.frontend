@@ -1,39 +1,49 @@
 # Dockerfile para Frontend Expo Web - BUILD DE PRODUÇÃO
+
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /workspace
 
-# Copiar tudo
+# Copiar projeto completo
 COPY . .
 
 WORKDIR /workspace/frontend
 
-# Configurar variável de ambiente para o build
+# URL da API Backend
 ENV EXPO_PUBLIC_BACKEND_URL=https://p01--appdevendas--cqnp8bvkcmhx.code.run
+
 RUN echo "EXPO_PUBLIC_BACKEND_URL=https://p01--appdevendas--cqnp8bvkcmhx.code.run" > .env
 
-# Instalar dependências (sem frozen-lockfile para evitar erro de lock desatualizado)
+# Instalar dependências
 RUN yarn install
 
-# Build de produção
+# Build Expo Web
 ENV NODE_ENV=production
+
 RUN npx expo export -p web
 
-# Estágio de produção - imagem leve
+
+# ==========================
+# IMAGEM DE PRODUÇÃO
+# ==========================
+
 FROM node:20-alpine
 
 WORKDIR /app
 
+# Servidor estático
 RUN npm install -g serve
 
-COPY --from=builder /workspace/frontend/dist /app/dist
+# Copiar arquivos gerados pelo Expo
+COPY --from=builder /workspace/frontend/dist ./dist
 
-# SPA routing config
-RUN echo '{"rewrites":[{"source":"**","destination":"/index.html"}]}' > /app/serve.json
+# Configuração SPA (React Router)
+RUN echo '{"rewrites":[{"source":"**","destination":"/index.html"}]}' > serve.json
 
-EXPOSE 8000
+EXPOSE 3000
 
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-8000}"]
+# Iniciar frontend
+CMD ["serve", "-s", "dist", "-l", "3000"]
 
